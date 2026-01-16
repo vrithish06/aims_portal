@@ -204,18 +204,5 @@ export const updateProduct = async (req, res) => {
     }
 };
 
-export const deleteProduct = async (req,res) =>{
-    const {id}=req.params;
-    try{
-        const deletedProduct=await sql`DELETE FROM products WHERE id=${id} RETURNING *`;
-        if(deletedProduct.length===0){
-            return res.status(404).json({success:false,message:"Product not found"});
-        }
-        res.status(200).json({success:true,message:"Product deleted successfully"});
-    }
-    catch(err){
-        res.status(500).json({success:false,message:"Server Error"});   
-        console.log("error in deleteProduct function",err);
-    }
-};
+
 
