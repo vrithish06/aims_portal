@@ -28,10 +28,7 @@ export const createUser = async (req, res) => {
   }
 
   try {
-    // 1️⃣ Hash password
     const password_hashed = await bcrypt.hash(password, 10);
-
-    // 2️⃣ Insert into user table
     const { data, error } = await supabase
       .from("user")
       .insert({
@@ -61,6 +58,58 @@ export const createUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error"
+    });
+  }
+};
+
+export const createCourse = async (req, res) => {
+  const {
+    code,
+    title,
+    ltp,
+    status,
+    author_id,
+    has_lab,
+    prereqs,
+    objectives
+  } = req.body;
+  if (!code || !title) {
+    return res.status(400).json({
+      success: false,
+      message: "course code and title are required"
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("course")
+      .insert({
+        is_deleted: false,
+        ins_ts: new Date(),
+        upd_ts: new Date(),
+        code,
+        title,
+        ltp,
+        status,
+        author_id,
+        has_lab,
+        prereqs,
+        objectives
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({
+      success: true,
+      data
+    });
+
+  } catch (err) {
+    console.error("Error creating course:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server Error"
     });
   }
 };
