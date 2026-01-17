@@ -204,3 +204,127 @@ export const deleteInstructor = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+// add course enrollment
+export const createEnrollment = async (req, res) => {
+  const { studentId, offeringId } = req.params;
+  try{
+    const {
+      enrol_type,
+      enrol_status
+    } = req.body;
+
+    if (!enrol_status || !enrol_type) {
+      return res.status(400).json({
+        success: false,
+        message: "enrol_status and enrol_type are required"
+      });
+    }
+
+    const { data, error } = await supabase
+    .from("course_enrollment")
+    .insert({
+      student_id: studentId,
+      offering_id: offeringId,
+      enrol_type,
+      enrol_status
+    })
+    .select()
+    .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({
+      success: true,
+      data : data 
+    })
+  } catch (err) {
+    console.error("createEnrollment error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+}
+
+//create course offering
+export const createOffering = async (req, res) => {
+  const { instructorId, courseId } = req.params;
+  try{
+  const {
+    degree,
+    dept_name,
+    acad_session,
+    status,
+    slot,
+    section
+  } = req.body;
+
+  const {data , error} = await supabase
+    .from("course_offering")
+    .insert({
+      course_id: courseId,
+      degree: degree,
+      dept_name: dept_name,
+      acad_session: acad_session,
+      status: status,
+      slot: slot,
+      section: section,
+      instructor_id: instructorId
+    })
+    .select()
+    .single();
+
+    if (error) {
+      console.error("createOffering error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  } catch (err) {
+    console.error("createOffering error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+}
+
+//update course enrollment
+export const updateEnrollment = async (req, res) => {
+  const { studentId, offeringId } = req.params;
+  try{
+    const {
+      enrol_status,
+      grade
+    } = req.body;
+
+    const { data, error } = await supabase
+    .from("course_enrollment")
+    .update({
+      enrol_status,
+      grade
+    })
+    .eq('student_id', studentId)
+    .eq('offering_id', offeringId)
+    .select()
+    .single();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data : data 
+    })
+  }
+  catch (err) {
+    console.error("updateEnrollment error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+}

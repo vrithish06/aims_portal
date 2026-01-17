@@ -7,7 +7,10 @@ import {
   getInstructors,
   getInstructor,
   updateInstructor,
-  deleteInstructor
+  deleteInstructor,
+  createEnrollment,
+  updateEnrollment,
+  createOffering
 } from '../controllers/aimsController.js';
 
 const router = express.Router();
@@ -27,5 +30,10 @@ router.post("/user.add",createUser);
 
 //create course
 router.post("/instructor/:instructorId/course",createCourse);
+//create course enrollment
+router.post("/student/:studentId/:offeringId/enroll",createEnrollment);
+router.put("/student/:studentId/:offeringId/enroll",updateEnrollment);
+//create course offering
+router.post("/instructor/:instructorId/course/:courseId/offer",createOffering);
 export default router;
 //kumarnaidu//tharun//"rithish"
