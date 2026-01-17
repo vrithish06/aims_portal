@@ -147,7 +147,6 @@ export const createInstructor = async (req, res) => {
   }
 };
 
-
 // Get all instructors
 export const getInstructors = async (req, res) => {
   try {
