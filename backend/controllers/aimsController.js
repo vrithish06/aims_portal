@@ -9,7 +9,7 @@ export const getHelp = async (req, res) => {
       "https://docs.google.com/document/d/e/2PACX-1vR4cB5IKv1YEAiZUgKt4ZnzznaMdeG-VjIU_NBmxzej54YWlHEMwuHK4l2JzXPiyJAteAsxbkSPugFE/pub"
   });
 };
-//creating the user by admin
+//creating the users by admin
 export const createUser = async (req, res) => {
   const {
     email,
@@ -32,7 +32,7 @@ export const createUser = async (req, res) => {
     const password_hashed = await bcrypt.hash(password, 10);
 
     const { data, error } = await supabase
-      .from("user")
+      .from("users")
       .insert({
         email,
         password_hashed,
@@ -52,7 +52,7 @@ export const createUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("createUser error:", err);
+    console.error("creaters error:", err);
 
     return res.status(500).json({
       success: false,
@@ -110,5 +110,95 @@ export const createCourse = async (req, res) => {
       success: false,
       message: "Server Error"
     });
+  }
+};
+// Create instructor
+export const createInstructor = async (req, res) => {
+  const { rs_id, instructor_number, branch, year_joined } = req.body;
+
+  if (!rs_id || !instructor_number) {
+    return res.status(400).json({
+      success: false,
+      message: "rs_id and instructor_number are required"
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("instructor")
+      .insert({ 
+        rs_id, 
+        instructor_number, 
+        branch, 
+        // salary,  // Remove this if column doesn't exist
+        year_joined 
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.status(201).json({ success: true, data });
+  } catch (err) {
+    console.error("createInstructor error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+// Get all instructors
+export const getInstructors = async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("instructor").select("*");
+    if (error) throw error;
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error("getInstructors error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get single instructor
+export const getInstructor = async (req, res) => {
+  const { rs_id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from("instructor")
+      .select("*")
+      .eq('rs_id', rs_id)
+      .single();
+    if (error) throw error;
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return res.status(404).json({ success: false, message: "Instructor not found" });
+  }
+};
+
+// Update instructor
+export const updateInstructor = async (req, res) => {
+  const { rs_id } = req.params;
+  const { instructor_number, branch, salary, year_joined } = req.body;
+  try {
+    const { data, error } = await supabase
+      .from("instructor")
+      .update({ instructor_number, branch, salary, year_joined })
+      .eq('rs_id', rs_id)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Delete instructor
+export const deleteInstructor = async (req, res) => {
+  const { rs_id } = req.params;
+  try {
+    const { error } = await supabase.from("instructor").delete().eq('rs_id', rs_id);
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: "Instructor deleted" });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
   }
 };
