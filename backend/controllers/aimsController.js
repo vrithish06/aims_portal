@@ -17,13 +17,15 @@ export const createUser = async (req, res) => {
     first_name,
     last_name,
     role,
-    branch
+    branch,
+    gender
   } = req.body;
 
-  if (!email || !password || !role) {
+  // basic validation
+  if (!email || !password || !first_name || !last_name || !role) {
     return res.status(400).json({
       success: false,
-      message: "email, password and role are required"
+      message: "email, password, first_name, last_name and role are required"
     });
   }
 
@@ -39,7 +41,8 @@ export const createUser = async (req, res) => {
         first_name,
         last_name,
         role,
-        branch
+        branch,
+        gender
       })
       .select()
       .single();
@@ -62,16 +65,18 @@ export const createUser = async (req, res) => {
 };
 //creating course
 export const createCourse = async (req, res) => {
+  const { instructorId } = req.params;
+
   const {
     code,
     title,
     ltp,
     status,
-    author_id,
     has_lab,
-    prereqs,
-    objectives
+    pre_req
   } = req.body;
+
+  // basic validation
   if (!code || !title) {
     return res.status(400).json({
       success: false,
@@ -83,32 +88,30 @@ export const createCourse = async (req, res) => {
     const { data, error } = await supabase
       .from("course")
       .insert({
-        is_deleted: false,
-        ins_ts: new Date(),
-        upd_ts: new Date(),
         code,
         title,
         ltp,
         status,
-        author_id,
         has_lab,
-        prereqs,
-        objectives
+        pre_req,
+        author_id: instructorId
       })
       .select()
       .single();
 
     if (error) throw error;
-    res.status(201).json({
+
+    return res.status(201).json({
       success: true,
       data
     });
 
   } catch (err) {
-    console.error("Error creating course:", err);
-    res.status(500).json({
+    console.error("createCourse error:", err);
+
+    return res.status(500).json({
       success: false,
-      message: "Server Error"
+      message: err.message
     });
   }
 };
