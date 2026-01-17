@@ -28,4 +28,4 @@ router.post("/user.add",createUser);
 //create course
 router.post("/instructor/:instructorId/course",createCourse);
 export default router;
-//"rithish"
+//kumarnaidu//"rithish"
