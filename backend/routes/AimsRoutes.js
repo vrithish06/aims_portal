@@ -8,16 +8,13 @@ import {
   getInstructor,
   updateInstructor,
   deleteInstructor,
-<<<<<<< HEAD
   getStudents,
   getStudent,
   updateStudent,
-  deleteStudent
-=======
+  deleteStudent,
   createEnrollment,
   updateEnrollment,
   createOffering
->>>>>>> f196427507017402767ff35945379df6c8d377fd
 } from '../controllers/aimsController.js';
 
 const router = express.Router();
