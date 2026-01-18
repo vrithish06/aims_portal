@@ -117,12 +117,12 @@ export const createCourse = async (req, res) => {
 };
 // Create instructor
 export const createInstructor = async (req, res) => {
-  const { rs_id, instructor_number, branch, year_joined } = req.body;
+  const { user_id, instructor_number, branch, year_joined } = req.body;
 
-  if (!rs_id || !instructor_number) {
+  if (!user_id || !instructor_number) {
     return res.status(400).json({
       success: false,
-      message: "rs_id and instructor_number are required"
+      message: "user_id and instructor_number are required"
     });
   }
 
@@ -130,7 +130,7 @@ export const createInstructor = async (req, res) => {
     const { data, error } = await supabase
       .from("instructor")
       .insert({ 
-        rs_id, 
+        user_id, 
         instructor_number, 
         branch, 
         // salary,  // Remove this if column doesn't exist
@@ -161,12 +161,12 @@ export const getInstructors = async (req, res) => {
 
 // Get single instructor
 export const getInstructor = async (req, res) => {
-  const { rs_id } = req.params;
+  const { user_id } = req.params;
   try {
     const { data, error } = await supabase
       .from("instructor")
       .select("*")
-      .eq('rs_id', rs_id)
+      .eq('user_id', user_id)
       .single();
     if (error) throw error;
     return res.status(200).json({ success: true, data });
@@ -177,13 +177,13 @@ export const getInstructor = async (req, res) => {
 
 // Update instructor
 export const updateInstructor = async (req, res) => {
-  const { rs_id } = req.params;
+  const { user_id } = req.params;
   const { instructor_number, branch, salary, year_joined } = req.body;
   try {
     const { data, error } = await supabase
       .from("instructor")
       .update({ instructor_number, branch, salary, year_joined })
-      .eq('rs_id', rs_id)
+      .eq('user_id', user_id)
       .select()
       .single();
     if (error) throw error;
@@ -195,11 +195,86 @@ export const updateInstructor = async (req, res) => {
 
 // Delete instructor
 export const deleteInstructor = async (req, res) => {
-  const { rs_id } = req.params;
+  const { user_id } = req.params;
   try {
-    const { error } = await supabase.from("instructor").delete().eq('rs_id', rs_id);
+    const { error } = await supabase.from("instructor").delete().eq('user_id', user_id);
     if (error) throw error;
     return res.status(200).json({ success: true, message: "Instructor deleted" });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+export const getStudents = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("student")
+      .select(`
+        *,
+        users:user_id (
+          email,
+          first_name,
+          last_name,
+          gender
+        )
+      `);
+    if (error) throw error;
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error("getStudents error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get single student
+export const getStudent = async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from("student")
+      .select(`
+        *,
+        users:user_id (
+          email,
+          first_name,
+          last_name,
+          gender
+        )
+      `)
+      .eq('user_id', user_id)
+      .single();
+    if (error) throw error;
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return res.status(404).json({ success: false, message: "Student not found" });
+  }
+};
+
+// Update student
+export const updateStudent = async (req, res) => {
+  const { user_id } = req.params;
+  const { roll_number, branch, cgpa, total_credits_completed, degree } = req.body;
+  
+  try {
+    const { data, error } = await supabase
+      .from("student")
+      .update({ roll_number, branch, cgpa, total_credits_completed, degree })
+      .eq('user_id', user_id)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Delete student
+export const deleteStudent = async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    const { error } = await supabase.from("student").delete().eq('user_id', user_id);
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: "Student deleted" });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }

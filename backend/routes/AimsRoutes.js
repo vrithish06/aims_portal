@@ -7,7 +7,11 @@ import {
   getInstructors,
   getInstructor,
   updateInstructor,
-  deleteInstructor
+  deleteInstructor,
+  getStudents,
+  getStudent,
+  updateStudent,
+  deleteStudent
 } from '../controllers/aimsController.js';
 
 const router = express.Router();
@@ -24,7 +28,10 @@ router.delete('/instructor/:user_id', deleteInstructor);
 
 //create user
 router.post("/user.add",createUser);
-
+router.get('/student', getStudents);
+router.get('/student/:user_id', getStudent);
+router.put('/student/:user_id', updateStudent);
+router.delete('/student/:user_id', deleteStudent);
 //create course
 router.post("/instructor/:instructorId/course",createCourse);
 export default router;
