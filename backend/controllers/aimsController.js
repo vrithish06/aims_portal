@@ -283,7 +283,8 @@ export const deleteStudent = async (req, res) => {
 // add course enrollment
 export const createEnrollment = async (req, res) => {
   const { studentId, offeringId } = req.params;
-  try{
+  
+  try {
     const {
       enrol_type,
       enrol_status
@@ -296,23 +297,37 @@ export const createEnrollment = async (req, res) => {
       });
     }
 
+    // Get student_id from user_id
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', parseInt(studentId))
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
     const { data, error } = await supabase
-    .from("course_enrollment")
-    .insert({
-      student_id: studentId,
-      offering_id: offeringId,
-      enrol_type,
-      enrol_status
-    })
-    .select()
-    .single();
+      .from("course_enrollment")
+      .insert({
+        student_id: studentData.student_id,
+        offering_id: parseInt(offeringId),
+        enrol_type,
+        enrol_status
+      })
+      .select()
+      .single();
 
     if (error) throw error;
 
     return res.status(201).json({
       success: true,
-      data : data 
-    })
+      data
+    });
   } catch (err) {
     console.error("createEnrollment error:", err);
 
@@ -321,7 +336,7 @@ export const createEnrollment = async (req, res) => {
       message: err.message
     });
   }
-}
+};
 
 //create course offering
 export const createOffering = async (req, res) => {
@@ -370,31 +385,44 @@ export const createOffering = async (req, res) => {
 //update course enrollment
 export const updateEnrollment = async (req, res) => {
   const { studentId, offeringId } = req.params;
-  try{
+  try {
     const {
       enrol_status,
       grade
     } = req.body;
 
+    // Get student_id from user_id
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', parseInt(studentId))
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
     const { data, error } = await supabase
-    .from("course_enrollment")
-    .update({
-      enrol_status,
-      grade
-    })
-    .eq('student_id', studentId)
-    .eq('offering_id', offeringId)
-    .select()
-    .single();
+      .from("course_enrollment")
+      .update({
+        enrol_status,
+        grade
+      })
+      .eq('student_id', studentData.student_id)
+      .eq('offering_id', parseInt(offeringId))
+      .select()
+      .single();
 
     if (error) throw error;
 
     return res.status(200).json({
       success: true,
-      data : data 
-    })
-  }
-  catch (err) {
+      data
+    });
+  } catch (err) {
     console.error("updateEnrollment error:", err);
 
     return res.status(500).json({
@@ -402,4 +430,270 @@ export const updateEnrollment = async (req, res) => {
       message: err.message
     });
   }
-}
+};
+
+// Login endpoint
+export const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  console.log(`[LOGIN] Attempting login for email: ${email}`);
+
+  if (!email || !password) {
+    console.log("[LOGIN] Missing email or password");
+    return res.status(400).json({
+      success: false,
+      message: "email and password are required"
+    });
+  }
+
+  try {
+    console.log(`[LOGIN] Querying database for email: ${email}`);
+    
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq('email', email)
+      .single();
+
+    console.log(`[LOGIN] Database query result:`, { exists: !!data, error });
+
+    if (error) {
+      console.log(`[LOGIN] Database error: ${error.message}`);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    if (!data) {
+      console.log(`[LOGIN] User not found with email: ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    console.log(`[LOGIN] User found. Password hash exists: ${!!data.password_hashed}`);
+    
+    // Verify password
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await bcrypt.compare(password, data.password_hashed);
+      console.log(`[LOGIN] Password comparison result: ${isPasswordValid}`);
+    } catch (bcryptErr) {
+      console.log(`[LOGIN] Bcrypt error: ${bcryptErr.message}`);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    if (!isPasswordValid) {
+      console.log(`[LOGIN] Password invalid for email: ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    console.log(`[LOGIN] Login successful for email: ${email}`);
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        user_id: data.id,
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: data.role
+      }
+    });
+
+  } catch (err) {
+    console.error(`[LOGIN] Unexpected error:`, err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get enrolled courses for a student
+export const getEnrolledCourses = async (req, res) => {
+  const { studentId } = req.params;
+
+  try {
+    // First, get the student record to find their student_id
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', studentId)
+      .single();
+
+    if (studentError || !studentData) {
+      console.log("Student not found for user_id:", studentId);
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    // Now get enrollments using student_id
+    const { data, error } = await supabase
+      .from("course_enrollment")
+      .select(`
+        *,
+        course_offering:offering_id (
+          *,
+          course:course_id (
+            code,
+            title,
+            ltp
+          ),
+          instructor:instructor_id (
+            user_id,
+            users:user_id (
+              first_name,
+              last_name,
+              email
+            )
+          )
+        )
+      `)
+      .eq('student_id', studentData.student_id)
+      .eq('is_deleted', false);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+
+  } catch (err) {
+    console.error("getEnrolledCourses error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get all course offerings
+export const getCourseOfferings = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("course_offering")
+      .select(`
+        *,
+        course:course_id (
+          code,
+          title,
+          ltp
+        ),
+        instructor:instructor_id (
+          users:user_id (
+            first_name,
+            last_name
+          )
+        )
+      `);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data
+    });
+
+  } catch (err) {
+    console.error("getCourseOfferings error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get enrollments for a specific offering
+export const getOfferingEnrollments = async (req, res) => {
+  const { offeringId } = req.params;
+
+  try {
+    console.log(`[ENROLLMENTS] Fetching enrollments for offering: ${offeringId}`);
+
+    // First get all enrollments for this offering
+    const { data: enrollmentData, error: enrollmentError } = await supabase
+      .from("course_enrollment")
+      .select("*")
+      .eq('offering_id', parseInt(offeringId))
+      .eq('is_deleted', false);
+
+    console.log(`[ENROLLMENTS] Raw enrollment count: ${enrollmentData?.length || 0}`, enrollmentError);
+
+    if (enrollmentError) {
+      console.error(`[ENROLLMENTS] Error fetching enrollments:`, enrollmentError);
+      throw enrollmentError;
+    }
+
+    if (!enrollmentData || enrollmentData.length === 0) {
+      console.log(`[ENROLLMENTS] No enrollments found for offering ${offeringId}`);
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
+    // Now get student details for each enrollment
+    const studentIds = enrollmentData.map(e => e.student_id);
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select(`
+        student_id,
+        user_id,
+        users:user_id (
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .in('student_id', studentIds);
+
+    console.log(`[ENROLLMENTS] Student data fetched:`, studentData?.length || 0);
+
+    if (studentError) {
+      console.error(`[ENROLLMENTS] Error fetching student data:`, studentError);
+      throw studentError;
+    }
+
+    // Create a map of student data by student_id
+    const studentMap = {};
+    studentData?.forEach(student => {
+      studentMap[student.student_id] = student;
+    });
+
+    // Combine enrollment and student data
+    const transformedData = enrollmentData.map(enrollment => ({
+      ...enrollment,
+      student_name: studentMap[enrollment.student_id]?.users ? 
+        `${studentMap[enrollment.student_id].users.first_name} ${studentMap[enrollment.student_id].users.last_name}` : 'N/A',
+      student_email: studentMap[enrollment.student_id]?.users?.email || 'N/A'
+    }));
+
+    console.log(`[ENROLLMENTS] Returning ${transformedData.length} enrollments for offering ${offeringId}`);
+
+    return res.status(200).json({
+      success: true,
+      count: transformedData.length,
+      data: transformedData
+    });
+
+  } catch (err) {
+    console.error("getOfferingEnrollments error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
