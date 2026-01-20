@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
 import { BookOpen, Users } from 'lucide-react';
@@ -22,9 +22,7 @@ function EnrolledCoursesPage() {
   const fetchEnrolledCourses = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `http://localhost:3000/student/${user.user_id}/enrolled-courses`
-      );
+      const response = await axiosClient.get('/student/enrolled-courses');
       
       if (response.data.success) {
         setCourses(response.data.data);

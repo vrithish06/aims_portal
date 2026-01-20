@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
 import { Zap, Users } from 'lucide-react';
@@ -20,9 +20,7 @@ function CourseOfferingsPage() {
   const fetchCourseOfferings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        'http://localhost:3000/course-offerings'
-      );
+      const response = await axiosClient.get('/course-offerings');
       
       if (response.data.success) {
         setOfferings(response.data.data);
@@ -41,8 +39,8 @@ function CourseOfferingsPage() {
 
   const fetchEnrollmentStats = async (offeringId) => {
     try {
-      const response = await axios.get(
-        `http://localhost:3000/offering/${offeringId}/enrollments`
+      const response = await axiosClient.get(
+        `/offering/${offeringId}/enrollments`
       );
       
       if (response.data.success) {
@@ -72,8 +70,8 @@ function CourseOfferingsPage() {
 
     try {
       setEnrolling(offeringId);
-      const response = await axios.post(
-        `http://localhost:3000/student/${user.user_id}/${offeringId}/enroll`,
+      const response = await axiosClient.post(
+        `/offering/${offeringId}/enroll`,
         {
           enrol_type: 'regular',
           enrol_status: 'enrolled'

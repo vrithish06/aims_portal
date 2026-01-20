@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
 import CourseOfferingsPage from "./pages/CourseOfferingsPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
 import useAuthStore from "./store/authStore";
 
@@ -28,8 +29,8 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/enrolled-courses" element={<EnrolledCoursesPage />} />
-        <Route path="/course-offerings" element={<CourseOfferingsPage />} />
+        <Route path="/enrolled-courses" element={<ProtectedRoute><EnrolledCoursesPage /></ProtectedRoute>} />
+        <Route path="/course-offerings" element={<ProtectedRoute><CourseOfferingsPage /></ProtectedRoute>} />
         <Route path="/product/:id" element={<ProductPage />} />
       </Routes>
     </div>

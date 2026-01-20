@@ -22,6 +22,7 @@ import {
   getCourseOfferings,
   getOfferingEnrollments
 } from '../controllers/aimsController.js';
+import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ router.get('/check-user/:email', async (req, res) => {
     
     const { data, error } = await supabase
       .from("users")
-      .select("user_id, email, first_name, last_name, role")
+      .select("id, email, first_name, last_name, role")
       .eq('email', email)
       .single();
 
@@ -115,41 +116,69 @@ router.get('/enrollments-all', async (req, res) => {
 
 // Auth endpoints
 router.post('/login', loginUser);
+router.post('/logout', requireAuth, async (req, res) => {
+  try {
+    const sid = req.sessionID;
+    // Remove session row from DB if present
+    if (sid) {
+      const { error: delErr } = await supabase.from('sessions').delete().eq('sid', sid);
+      if (delErr) console.error('[LOGOUT] Error deleting session row:', delErr);
+    }
+
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('[LOGOUT] Error destroying session:', err);
+        return res.status(500).json({ success: false, message: 'Could not log out' });
+      }
+      // Clear cookie using server's session name
+      res.clearCookie(process.env.SESSION_COOKIE_NAME || 'aims.sid');
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
+  } catch (err) {
+    console.error('[LOGOUT] Unexpected error:', err);
+    return res.status(500).json({ success: false, message: 'Could not log out' });
+  }
+});
+router.get('/me', requireAuth, (req, res) => {
+  res.json({ success: true, data: req.user });
+});
 
 // Instructor routes
-router.post('/instructor', createInstructor);
-router.get('/instructor', getInstructors);
-router.get('/instructor/:user_id', getInstructor);
-router.put('/instructor/:user_id', updateInstructor);
-router.delete('/instructor/:user_id', deleteInstructor);
+// Instructor routes - identity derived from session
+router.post('/instructor', requireRole('admin'), createInstructor);
+router.get('/instructor', requireAuth, getInstructors);
+router.get('/instructor/me', requireAuth, requireRole('instructor'), getInstructor);
+router.put('/instructor/me', requireAuth, requireRole('instructor'), updateInstructor);
+router.delete('/instructor/me', requireAuth, requireRole('instructor'), deleteInstructor);
 
 //create user
-router.post("/user.add",createUser);
-router.get('/student', getStudents);
-router.get('/student/:user_id', getStudent);
-router.put('/student/:user_id', updateStudent);
-router.delete('/student/:user_id', deleteStudent);
+router.post("/user.add", requireRole('admin'), createUser);
+router.get('/student', requireRole('admin'), getStudents);
+router.get('/student/me', requireAuth, getStudent);
+router.put('/student/me', requireAuth, updateStudent);
+router.delete('/student/me', requireAuth, deleteStudent);
 
 // Enrolled courses
-router.get('/student/:studentId/enrolled-courses', getEnrolledCourses);
+// Enrolled courses for the currently authenticated student
+router.get('/student/enrolled-courses', requireAuth, getEnrolledCourses);
 
-// Course offerings
+// Course offerings - public read (no auth required to see available courses)
 router.get('/course-offerings', getCourseOfferings);
 router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
 
 //create course
-router.post("/instructor/:instructorId/course",createCourse);
-//create course enrollment
-router.post("/student/:studentId/:offeringId/enroll", (req, res, next) => {
-  console.log('[ENROLL] Route hit!', req.params);
-  next();
-}, createEnrollment);
-router.put("/student/:studentId/:offeringId/enroll",updateEnrollment);
-//create course offering
-router.post("/instructor/:instructorId/course/:courseId/offer",createOffering);
+// Instructor creates a course (uses session identity)
+router.post('/instructor/course', requireAuth, requireRole('instructor'), createCourse);
+
+// Enrollment endpoints - any authenticated user can enroll/update their enrollment
+router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
+router.put('/offering/:offeringId/enroll', requireAuth, updateEnrollment);
+
+// Instructor creates offerings for their courses
+router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
 
 // Admin endpoint to fix/hash passwords (use with caution!)
-router.post('/admin/fix-password/:email/:plainPassword', async (req, res) => {
+router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), async (req, res) => {
   try {
     const { email, plainPassword } = req.params;
     
