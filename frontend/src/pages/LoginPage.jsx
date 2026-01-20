@@ -95,43 +95,56 @@ function LoginPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-base-200">
-      <div className="card w-96 bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title mb-4">Login</h2>
+    return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="flex w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl">
+        {/* Left Side - Logo and Branding (Centered) */}
+        <div className="w-1/2 flex flex-col items-center justify-center bg-white text-black p-16 relative">
+          {/* Logo Image */}
+          <img 
+            src="/logo.png" 
+            alt="AIMS Logo" 
+            className="w-40 h-40 mb-8 object-contain"
+          />
+          <h1 className="text-4xl font-bold mb-6 text-black text-center">AIMS</h1>
+          <p className="text-lg font-light text-gray-700 text-center">
+            Use your college mail id to signin
+          </p>
+          <p className="text-base font-light text-gray-600 mt-2 text-center">
+            ending with @iitrpr.ac.in
+          </p>
           
+          {/* Vertical Divider Line */}
+          <div className="absolute right-0 top-10 bottom-10 w-0.5 bg-gradient-to-b from-blue-200 to-blue-400"></div>
+        </div>
+
+        {/* Right Side - Login Form */}
+        <div className="w-1/2 bg-white text-black p-16 flex flex-col justify-center">
           {!backendConnected && (
-            <div className="alert alert-error mb-4">
+            <div className="bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded mb-6">
               <span>⚠️ Backend not connected. Check server is running on port 3000</span>
             </div>
           )}
           
           <form onSubmit={handleSubmit}>
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Email</span>
-              </label>
+            <div className="mb-6">
               <input
                 type="email"
                 name="email"
-                placeholder="Enter your email"
-                className="input input-bordered w-full"
+                placeholder="Enter email"
+                className="w-full bg-transparent border-b border-gray-400 text-black text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500"
                 value={formData.email}
                 onChange={handleChange}
                 disabled={loading}
               />
             </div>
 
-            <div className="form-control w-full mb-6">
-              <label className="label">
-                <span className="label-text">Password</span>
-              </label>
+            <div className="mb-8">
               <input
                 type="password"
                 name="password"
-                placeholder="Enter your password"
-                className="input input-bordered w-full"
+                placeholder="Enter password"
+                className="w-full bg-transparent border-b border-gray-400 text-black text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500"
                 value={formData.password}
                 onChange={handleChange}
                 disabled={loading}
@@ -140,12 +153,12 @@ function LoginPage() {
 
             <button
               type="submit"
-              className="btn btn-primary w-full"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-full transition-colors"
               disabled={loading || !backendConnected}
             >
               {loading ? (
                 <>
-                  <span className="loading loading-spinner loading-xs"></span>
+                  <span className="loading loading-spinner loading-xs mr-2"></span>
                   Logging in...
                 </>
               ) : (
@@ -153,11 +166,6 @@ function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="divider"></div>
-          <p className="text-sm text-center">
-            Test credentials: Check your database or admin
-          </p>
         </div>
       </div>
     </div>

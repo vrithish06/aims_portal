@@ -1,4 +1,4 @@
-import { ShoppingCartIcon, LogOut, LogIn } from "lucide-react";
+import { LogOut, LogIn } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import { useEffect } from "react";
@@ -19,23 +19,42 @@ function Navbar() {
   };
 
   return (
-    <div className="bg-base-100/80 backdrop-blur-lg border-b border-base-content/10 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto">
-        <div className="navbar px-4 min-h-[4rem] justify-between">
+    <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="navbar px-4 min-h-[4rem] justify-between">
           {/* LOGO */}
-          <div className="flex-1 lg:flex-none">
+          <div className="flex-1">
             <Link to="/" className="hover:opacity-80 transition-opacity">
-              <div className="flex items-center gap-2">
-                <ShoppingCartIcon className="size-9 text-primary" />
-                <span
-                  className="font-semibold font-mono tracking-widest text-2xl
-                  bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary"
-                >
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/logo.png" 
+                  alt="AIMS Logo" 
+                  className="h-10 w-10 object-contain"
+                />
+                <span className="font-semibold font-mono tracking-widest text-2xl text-black">
                   AIMS
                 </span>
               </div>
             </Link>
           </div>
+
+          {/* Navigation Links */}
+          {isAuthenticated && (
+            <div className="flex gap-8 items-center pr-12">
+              <Link to="/" className="text-gray-700 hover:text-black font-medium transition-colors">
+                Dashboard
+              </Link>
+              {user?.role === 'student' && (
+                <>
+                  <Link to="/enrolled-courses" className="text-gray-700 hover:text-black font-medium transition-colors">
+                    My Courses
+                  </Link>
+                  <Link to="/course-offerings" className="text-gray-700 hover:text-black font-medium transition-colors">
+                    Browse Courses
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Right side actions */}
           <div className="flex-none gap-3">
@@ -43,7 +62,7 @@ function Navbar() {
               <>
                 <div className="dropdown dropdown-end">
                   <div tabIndex={0} className="btn btn-ghost btn-circle avatar cursor-pointer">
-                    <div className="bg-primary text-primary-content rounded-full w-10 flex items-center justify-center font-bold">
+                    <div className="bg-blue-600 text-white rounded-full w-10 flex items-center justify-center font-bold text-sm">
                       {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
                     </div>
                   </div>
@@ -90,7 +109,6 @@ function Navbar() {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }
