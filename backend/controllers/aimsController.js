@@ -1,6 +1,35 @@
 import supabase from "../config/db.js";
 import bcrypt from "bcrypt";
 
+// Authentication middleware
+export const requireAuth = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  // Attach user to request object for use in controllers
+  req.user = req.session.user;
+  next();
+};
+
+// Role-based authorization middleware
+// Usage: requireRole('instructor') or requireRole('admin')
+export const requireRole = (role) => (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  req.user = req.session.user;
+  const userRole = req.user.role;
+  if (!userRole) return res.status(403).json({ success: false, message: 'Forbidden' });
+  // allow admin to bypass specific role checks
+  if (userRole !== role && userRole !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Forbidden' });
+  }
+  next();
+};
+
 //help endpoint
 export const getHelp = async (req, res) => {
   res.status(200).json({
@@ -65,7 +94,8 @@ export const createUser = async (req, res) => {
 };
 //creating course
 export const createCourse = async (req, res) => {
-  const { instructorId } = req.params;
+  // Identity comes from session; do not trust params/body for instructor identity
+  const instructorId = req.user?.user_id;
 
   const {
     code,
@@ -161,7 +191,8 @@ export const getInstructors = async (req, res) => {
 
 // Get single instructor
 export const getInstructor = async (req, res) => {
-  const { user_id } = req.params;
+  // Use session identity for instructor lookup
+  const user_id = req.user?.user_id;
   try {
     const { data, error } = await supabase
       .from("instructor")
@@ -177,7 +208,8 @@ export const getInstructor = async (req, res) => {
 
 // Update instructor
 export const updateInstructor = async (req, res) => {
-  const { user_id } = req.params;
+  // Use session identity for which instructor is being updated
+  const user_id = req.user?.user_id;
   const { instructor_number, branch, salary, year_joined } = req.body;
   try {
     const { data, error } = await supabase
@@ -195,7 +227,8 @@ export const updateInstructor = async (req, res) => {
 
 // Delete instructor
 export const deleteInstructor = async (req, res) => {
-  const { user_id } = req.params;
+  // Use session identity for deleting instructor record
+  const user_id = req.user?.user_id;
   try {
     const { error } = await supabase.from("instructor").delete().eq('user_id', user_id);
     if (error) throw error;
@@ -227,7 +260,8 @@ export const getStudents = async (req, res) => {
 
 // Get single student
 export const getStudent = async (req, res) => {
-  const { user_id } = req.params;
+  // Use session identity to fetch the student record
+  const user_id = req.user?.user_id;
   try {
     const { data, error } = await supabase
       .from("student")
@@ -251,7 +285,8 @@ export const getStudent = async (req, res) => {
 
 // Update student
 export const updateStudent = async (req, res) => {
-  const { user_id } = req.params;
+  // Use session identity for updates
+  const user_id = req.user?.user_id;
   const { roll_number, branch, cgpa, total_credits_completed, degree } = req.body;
   
   try {
@@ -270,7 +305,8 @@ export const updateStudent = async (req, res) => {
 
 // Delete student
 export const deleteStudent = async (req, res) => {
-  const { user_id } = req.params;
+  // Use session identity for delete
+  const user_id = req.user?.user_id;
   try {
     const { error } = await supabase.from("student").delete().eq('user_id', user_id);
     if (error) throw error;
@@ -282,8 +318,10 @@ export const deleteStudent = async (req, res) => {
 
 // add course enrollment
 export const createEnrollment = async (req, res) => {
-  const { studentId, offeringId } = req.params;
-  
+  // Student identity must come from session; offeringId comes from URL
+  const offeringId = req.params.offeringId;
+  const userId = req.user?.user_id;
+
   try {
     const {
       enrol_type,
@@ -297,11 +335,11 @@ export const createEnrollment = async (req, res) => {
       });
     }
 
-    // Get student_id from user_id
+    // Get student_id from session user_id
     const { data: studentData, error: studentError } = await supabase
       .from("student")
       .select("student_id")
-      .eq('user_id', parseInt(studentId))
+      .eq('user_id', parseInt(userId))
       .single();
 
     if (studentError || !studentData) {
@@ -340,7 +378,9 @@ export const createEnrollment = async (req, res) => {
 
 //create course offering
 export const createOffering = async (req, res) => {
-  const { instructorId, courseId } = req.params;
+  // Instructor identity must come from session; courseId comes from URL
+  const instructorId = req.user?.user_id;
+  const { courseId } = req.params;
   try{
   const {
     degree,
@@ -384,18 +424,20 @@ export const createOffering = async (req, res) => {
 
 //update course enrollment
 export const updateEnrollment = async (req, res) => {
-  const { studentId, offeringId } = req.params;
+  // Derive student from session; offeringId from URL
+  const offeringId = req.params.offeringId;
+  const userId = req.user?.user_id;
   try {
     const {
       enrol_status,
       grade
     } = req.body;
 
-    // Get student_id from user_id
+    // Get student_id from session user_id
     const { data: studentData, error: studentError } = await supabase
       .from("student")
       .select("student_id")
-      .eq('user_id', parseInt(studentId))
+      .eq('user_id', parseInt(userId))
       .single();
 
     if (studentError || !studentData) {
@@ -435,6 +477,9 @@ export const updateEnrollment = async (req, res) => {
 // Login endpoint
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
+
+  console.log('[LOGIN] Request cookies:', req.headers.cookie || 'none');
+  console.log('[LOGIN] req.session exists at handler start:', !!req.session, 'sessionID:', req.sessionID || 'none');
 
   console.log(`[LOGIN] Attempting login for email: ${email}`);
 
@@ -497,9 +542,56 @@ export const loginUser = async (req, res) => {
     }
 
     console.log(`[LOGIN] Login successful for email: ${email}`);
-    
+
+    // Ensure session middleware is available
+    if (!req.session) {
+      console.error('[LOGIN] req.session is undefined; session middleware may not be attached');
+      return res.status(500).json({
+        success: false,
+        message: 'Server session middleware not available. Check server configuration.'
+      });
+    }
+
+    // Create session
+    req.session.user = {
+      user_id: data.id,
+      email: data.email,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      role: data.role
+    };
+
+    console.log(`[LOGIN] Session created for user: ${data.email}`);
+
+    // Persist session to the database (sessions table)
+    try {
+      const sid = req.sessionID;
+      // Make a plain JSON-safe copy of the session
+      const sessObj = JSON.parse(JSON.stringify(req.session));
+      const expire = new Date(Date.now() + (req.session.cookie?.maxAge || 24 * 60 * 60 * 1000));
+
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .upsert([
+          {
+            sid: sid,
+            sess: sessObj,
+            expire: expire
+          }
+        ]);
+
+      if (sessionError) {
+        console.error('[LOGIN] Error saving session to DB:', sessionError);
+      } else {
+        console.log('[LOGIN] Session saved to DB for sid:', sid);
+      }
+    } catch (saveErr) {
+      console.error('[LOGIN] Unexpected error saving session to DB:', saveErr);
+    }
+
     return res.status(200).json({
       success: true,
+      message: "Login successful",
       data: {
         user_id: data.id,
         email: data.email,
@@ -520,18 +612,19 @@ export const loginUser = async (req, res) => {
 
 // Get enrolled courses for a student
 export const getEnrolledCourses = async (req, res) => {
-  const { studentId } = req.params;
+  // Derive student from session; do not trust URL params for identity
+  const userId = req.user?.user_id;
 
   try {
     // First, get the student record to find their student_id
     const { data: studentData, error: studentError } = await supabase
       .from("student")
       .select("student_id")
-      .eq('user_id', studentId)
+      .eq('user_id', userId)
       .single();
 
     if (studentError || !studentData) {
-      console.log("Student not found for user_id:", studentId);
+      console.log("Student not found for user_id:", userId);
       return res.status(404).json({
         success: false,
         message: "Student record not found"
