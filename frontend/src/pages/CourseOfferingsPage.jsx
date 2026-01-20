@@ -1,17 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
-import { Zap, Users } from 'lucide-react';
+import { Zap, ChevronDown, Search, X, ListFilter } from 'lucide-react';
 
 function CourseOfferingsPage() {
   const [offerings, setOfferings] = useState([]);
   const [enrolling, setEnrolling] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedOffering, setSelectedOffering] = useState(null);
   const [enrollmentStats, setEnrollmentStats] = useState({});
-  const [enrolledStudents, setEnrolledStudents] = useState({});
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [selectedEnrollType, setSelectedEnrollType] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [tempFilters, setTempFilters] = useState({
+    department: [],
+    slot: [],
+    session: [],
+    status: []
+  });
+  const [filters, setFilters] = useState({
+    department: [],
+    slot: [],
+    session: [],
+    status: []
+  });
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCourseOfferings();
@@ -24,7 +40,6 @@ function CourseOfferingsPage() {
       
       if (response.data.success) {
         setOfferings(response.data.data);
-        // Fetch enrollment stats for each offering
         response.data.data.forEach(offering => {
           fetchEnrollmentStats(offering.offering_id);
         });
@@ -48,10 +63,6 @@ function CourseOfferingsPage() {
           ...prev,
           [offeringId]: response.data.count
         }));
-        setEnrolledStudents(prev => ({
-          ...prev,
-          [offeringId]: response.data.data || []
-        }));
       }
     } catch (error) {
       console.error('Failed to fetch enrollment stats:', error);
@@ -68,29 +79,25 @@ function CourseOfferingsPage() {
       return;
     }
 
+    const enrollType = selectedEnrollType[offeringId] || 'regular';
+
     try {
       setEnrolling(offeringId);
       const response = await axiosClient.post(
         `/offering/${offeringId}/enroll`,
         {
-          enrol_type: 'regular',
+          enrol_type: enrollType,
           enrol_status: 'enrolled'
         }
       );
 
       if (response.data.success) {
-        toast.success('Successfully enrolled in course!');
+        toast.success(`Successfully enrolled as ${enrollType}!`);
         
-        // Wait a moment for the enrollment to be saved
         setTimeout(async () => {
-          // Refresh enrollment stats for this offering
           await fetchEnrollmentStats(offeringId);
-          
-          // Open the modal to show all enrollments
-          setSelectedOffering(offeringId);
-          
-          // Also refresh the full course offerings list
           await fetchCourseOfferings();
+          setOpenDropdown(null);
         }, 300);
       } else {
         toast.error('Enrollment failed');
@@ -107,6 +114,76 @@ function CourseOfferingsPage() {
     }
   };
 
+  const handleCourseClick = (offering) => {
+    navigate(`/course/${offering.offering_id}`, { state: { offering } });
+  };
+
+  // Get unique filter options
+  const getUniqueValues = (key) => {
+    return [...new Set(offerings.map(o => o[key]).filter(Boolean))].sort();
+  };
+
+  // Filter offerings based on search and filters
+  const filteredOfferings = offerings.filter(offering => {
+    const course = offering.course;
+    const matchesSearch = !searchQuery || 
+      (course?.code?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (course?.title?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesFilters = 
+      (filters.department.length === 0 || filters.department.includes(offering.dept_name)) &&
+      (filters.slot.length === 0 || filters.slot.includes(offering.slot)) &&
+      (filters.session.length === 0 || filters.session.includes(offering.acad_session)) &&
+      (filters.status.length === 0 || filters.status.includes(offering.status));
+
+    return matchesSearch && matchesFilters;
+  });
+
+  const toggleTempFilter = (category, value) => {
+    setTempFilters(prev => ({
+      ...prev,
+      [category]: prev[category].includes(value)
+        ? prev[category].filter(v => v !== value)
+        : [...prev[category], value]
+    }));
+  };
+
+  const applyFilters = () => {
+    setFilters(tempFilters);
+    setShowFilters(false);
+  };
+
+  const handleFilterKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      applyFilters();
+    }
+  };
+
+  const toggleFilters = () => {
+    if (showFilters) {
+      setShowFilters(false);
+    } else {
+      setTempFilters(filters);
+      setShowFilters(true);
+    }
+  };
+
+  const clearAllFilters = () => {
+    const emptyFilters = {
+      department: [],
+      slot: [],
+      session: [],
+      status: []
+    };
+    setFilters(emptyFilters);
+    setTempFilters(emptyFilters);
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(f => f.length > 0) || searchQuery;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -116,89 +193,253 @@ function CourseOfferingsPage() {
   }
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-2">
-            <Zap className="w-8 h-8" />
-            Available Course Offerings
-          </h1>
-          <p className="text-lg text-gray-600">
-            Total offerings: {offerings.length}
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-4xl font-bold mb-2 flex items-center gap-2 text-gray-900">
+          <Zap className="w-8 h-8 text-blue-600" />
+          Offered Courses
+        </h1>
+        <p className="text-lg text-gray-600">
+          Total offerings: {offerings.length}
+        </p>
+      </div>
 
-        {offerings.length === 0 ? (
-          <div className="alert alert-info">
-            <span>No course offerings available at the moment.</span>
+      {/* Search Bar with Filter Button */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by course code or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {offerings.map((offering) => {
-              const course = offering.course;
-              const instructor = offering.instructor?.users;
-              const enrollmentCount = enrollmentStats[offering.offering_id] || 0;
-              
-              return (
-                <div key={offering.offering_id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition">
-                  <div className="card-body">
-                    <h2 className="card-title text-lg">
-                      {course?.code || 'N/A'}
-                    </h2>
-                    <p className="font-semibold text-base mb-3">
-                      {course?.title || 'Course'}
-                    </p>
-                    
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-semibold">Credits:</span> {course?.ltp || 'N/A'}</p>
-                      <p><span className="font-semibold">Instructor:</span> {instructor ? `${instructor.first_name} ${instructor.last_name}` : 'N/A'}</p>
-                      <p><span className="font-semibold">Session:</span> {offering.acad_session || 'N/A'}</p>
-                      <p><span className="font-semibold">Department:</span> {offering.dept_name || 'N/A'}</p>
-                      <p><span className="font-semibold">Degree:</span> {offering.degree || 'N/A'}</p>
-                      <p><span className="font-semibold">Section:</span> {offering.section || 'N/A'}</p>
-                      <p><span className="font-semibold">Slot:</span> {offering.slot || 'N/A'}</p>
-                      <p>
-                        <span className="font-semibold">Status:</span>
-                        <span className={`ml-2 badge ${
-                          offering.status === 'open' ? 'badge-success' : offering.status === 'closed' ? 'badge-error' : offering.status === 'ongoing' ? 'badge-warning' : 'badge-info'
-                        }`}>
-                          {offering.status || 'unknown'}
-                        </span>
-                      </p>
+          <button
+            onClick={toggleFilters}
+            className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors ${
+              showFilters 
+                ? 'bg-blue-600 text-white border-blue-600' 
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {showFilters ? (
+              <>
+                <X className="w-5 h-5" />
+                <span className="font-medium">Close</span>
+              </>
+            ) : (
+              <>
+                <ListFilter className="w-5 h-5" />
+                <span className="font-medium">Filters</span>
+                {hasActiveFilters() && (
+                  <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {Object.values(filters).reduce((acc, curr) => acc + curr.length, 0)}
+                  </span>
+                )}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
-                      {/* Enrollment count badge - only show if there are enrollments */}
-                      {enrollmentCount > 0 && (
-                        <div className="mt-3 p-2 bg-blue-50 rounded-lg flex items-center gap-2">
-                          <Users className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm">
-                            <span className="font-semibold">{enrollmentCount}</span> students enrolled
-                          </span>
-                          <button
-                            className="ml-auto btn btn-xs btn-ghost"
-                            onClick={() => {
-                              setSelectedOffering(offering.id);
-                            }}
-                          >
-                            View
-                          </button>
-                        </div>
+      {/* Main Content */}
+      <div className="p-4 flex gap-4">
+        {/* Filters Sidebar - Conditional Rendering */}
+        {showFilters && (
+          <div className="w-80 flex-shrink-0" onKeyPress={handleFilterKeyPress}>
+            <div className="bg-white rounded-lg border border-gray-300 p-6 sticky top-24">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Filters</h3>
+                {Object.values(tempFilters).some(f => f.length > 0) && (
+                  <button
+                    onClick={() => setTempFilters({
+                      department: [],
+                      slot: [],
+                      session: [],
+                      status: []
+                    })}
+                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Department Filter */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Department</h4>
+                <div className="space-y-2">
+                  {getUniqueValues('dept_name').map(dept => (
+                    <label key={dept} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.department.includes(dept)}
+                        onChange={() => toggleTempFilter('department', dept)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{dept}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Session Filter */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Session</h4>
+                <div className="space-y-2">
+                  {getUniqueValues('acad_session').map(session => (
+                    <label key={session} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.session.includes(session)}
+                        onChange={() => toggleTempFilter('session', session)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{session}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slot Filter */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Slot</h4>
+                <div className="space-y-2">
+                  {getUniqueValues('slot').map(slot => (
+                    <label key={slot} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.slot.includes(slot)}
+                        onChange={() => toggleTempFilter('slot', slot)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{slot}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Status</h4>
+                <div className="space-y-2">
+                  {getUniqueValues('status').map(status => (
+                    <label key={status} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.status.includes(status)}
+                        onChange={() => toggleTempFilter('status', status)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700 capitalize">{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Apply Filters Button */}
+              <button
+                onClick={applyFilters}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Courses Grid */}
+        <div className="flex-1">
+          {/* Active Filters Display */}
+          {hasActiveFilters() && (
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-blue-800 font-medium">
+                  {filteredOfferings.length} course{filteredOfferings.length !== 1 ? 's' : ''} found
+                </span>
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  Clear all filters
+                </button>
+              </div>
+            </div>
+          )}
+
+          {filteredOfferings.length === 0 ? (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-6 py-4 rounded-lg">
+              <span>No courses match your search or filters.</span>
+            </div>
+          ) : (
+            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
+              {filteredOfferings.map((offering) => {
+                const course = offering.course;
+                const instructor = offering.instructor?.users;
+                const enrollmentCount = enrollmentStats[offering.offering_id] || 0;
+                
+                return (
+                  <div 
+                    key={offering.offering_id}
+                    onClick={() => handleCourseClick(offering)}
+                    className="bg-white border-2 border-gray-300 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                  >
+                    {/* Course Code - Link Style */}
+                    <div className="mb-3">
+                      <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-blue-600 hover:underline font-medium">
+                        {course?.code}
+                      </a>
+                      {course?.title && (
+                        <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-blue-600 hover:underline font-medium block">
+                          {course?.title}
+                        </a>
                       )}
                     </div>
 
-                    <div className="card-actions justify-between mt-4">
-                      {enrollmentCount > 0 && (
-                        <button
-                          className="btn btn-sm btn-outline"
-                          onClick={() => {
-                            setSelectedOffering(offering.offering_id);
-                          }}
-                        >
-                          View Enrollments ({enrollmentCount})
-                        </button>
-                      )}
+                    {/* Course Details */}
+                    <div className="space-y-2 text-sm mb-6">
+                      <p>
+                        <span className="font-semibold">CREDITS</span> {course?.ltp || 'N/A'}. 
+                        <span className="font-semibold ml-2">STATUS</span> 
+                        <span className={`ml-1 ${
+                          offering.status === 'open' ? 'text-green-700' : 
+                          offering.status === 'closed' ? 'text-red-700' : 
+                          offering.status === 'ongoing' ? 'text-yellow-700' : 
+                          'text-blue-700'
+                        }`}>
+                          {offering.status?.charAt(0).toUpperCase() + offering.status?.slice(1) || 'Unknown'}
+                        </span>
+                        . <span className="font-semibold ml-2">SESSION</span> {offering.acad_session || 'N/A'}.
+                      </p>
+
+                      <p>
+                        <span className="font-semibold">ENROLLMENT</span> {enrollmentCount} in Sec.-{offering.section || 'A'}.
+                      </p>
+
+                      <p>
+                        <span className="font-semibold">OFFERED BY</span> {offering.dept_name || 'N/A'}.
+                      </p>
+
+                      <p>
+                        <span className="font-semibold">SLOT</span> {offering.slot || 'N/A'}.
+                      </p>
+
+                      <p>
+                        <span className="font-semibold">INSTRUCTOR(S)</span> {instructor ? `${instructor.first_name} ${instructor.last_name}` : 'N/A'}.
+                      </p>
+                    </div>
+
+                    {/* Enroll Button with Dropdown */}
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
                       <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleEnroll(offering.offering_id)}
+                        onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
                         disabled={enrolling === offering.offering_id}
                       >
                         {enrolling === offering.offering_id ? (
@@ -207,75 +448,52 @@ function CourseOfferingsPage() {
                             Enrolling...
                           </>
                         ) : (
-                          'Enroll Now'
+                          <>
+                            Enroll
+                            <ChevronDown className="w-4 h-4" />
+                          </>
                         )}
                       </button>
+                      
+                      {openDropdown === offering.offering_id && (
+                        <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg z-50">
+                          <button
+                            onClick={() => {
+                              setSelectedEnrollType(prev => ({ ...prev, [offering.offering_id]: 'regular' }));
+                              handleEnroll(offering.offering_id);
+                            }}
+                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
+                          >
+                            Regular
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedEnrollType(prev => ({ ...prev, [offering.offering_id]: 'audit' }));
+                              handleEnroll(offering.offering_id);
+                            }}
+                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
+                          >
+                            Audit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedEnrollType(prev => ({ ...prev, [offering.offering_id]: 'backlog' }));
+                              handleEnroll(offering.offering_id);
+                            }}
+                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
+                          >
+                            Backlog
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Modal for enrolled students */}
-      {selectedOffering && (
-        <div className="modal modal-open">
-          <div className="modal-box w-11/12 max-w-2xl">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Enrolled Students - {offerings.find(o => o.offering_id === selectedOffering)?.course?.code}
-            </h3>
-            
-            <div className="mb-4">
-              <p className="text-sm font-semibold text-gray-600 mb-2">
-                Total Enrolled: <span className="badge badge-lg badge-primary">{enrollmentStats[selectedOffering] || 0}</span>
-              </p>
+                );
+              })}
             </div>
-
-            {enrolledStudents[selectedOffering]?.length === 0 ? (
-              <div className="alert alert-info">
-                <span>No students enrolled yet in this course.</span>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table table-zebra w-full">
-                  <thead>
-                    <tr>
-                      <th>Student Name</th>
-                      <th>Email</th>
-                      <th>Status</th>
-                      <th>Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enrolledStudents[selectedOffering]?.map((enrollment, idx) => (
-                      <tr key={idx}>
-                        <td>{enrollment.student_name || 'N/A'}</td>
-                        <td>{enrollment.student_email || 'N/A'}</td>
-                        <td>
-                          <span className={`badge ${
-                            enrollment.enrol_status === 'enrolled' ? 'badge-success' : enrollment.enrol_status === 'completed' ? 'badge-info' : 'badge-warning'
-                          }`}>
-                            {enrollment.enrol_status}
-                          </span>
-                        </td>
-                        <td>{enrollment.grade || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="modal-action">
-              <button className="btn" onClick={() => setSelectedOffering(null)}>Close</button>
-            </div>
-          </div>
-          <div className="modal-backdrop" onClick={() => setSelectedOffering(null)}></div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
