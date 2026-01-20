@@ -1,4 +1,4 @@
-import { LogOut, LogIn } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import { useEffect } from "react";
@@ -10,7 +10,7 @@ function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('Navbar updated - Auth:', { isAuthenticated, user: user?.email });
+    console.log("Navbar updated - Auth:", { isAuthenticated, user: user?.email });
   }, [isAuthenticated, user]);
 
   const handleLogout = () => {
@@ -21,100 +21,115 @@ function Navbar() {
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="navbar px-4 min-h-[4rem] justify-between">
-          {/* LOGO */}
-          <div className="flex-1">
-            <Link to="/" className="hover:opacity-80 transition-opacity">
-              <div className="flex items-center gap-3">
-                <img 
-                  src="/logo.png" 
-                  alt="AIMS Logo" 
-                  className="h-10 w-10 object-contain"
-                />
-                <span className="font-semibold font-mono tracking-widest text-2xl text-black">
-                  AIMS
-                </span>
-              </div>
-            </Link>
-          </div>
 
-          {/* Navigation Links */}
-          {isAuthenticated && (
-            <div className="flex gap-8 items-center pr-12">
-              <Link to="/" className="text-gray-700 hover:text-black font-medium transition-colors">
-                Dashboard
-              </Link>
-              {user?.role === 'student' && (
-                <>
-                  <Link to="/enrolled-courses" className="text-gray-700 hover:text-black font-medium transition-colors">
-                    My Courses
-                  </Link>
-                  <Link to="/course-offerings" className="text-gray-700 hover:text-black font-medium transition-colors">
-                    Browse Courses
-                  </Link>
-                  <Link to="/student-record" className="text-gray-700 hover:text-black font-medium transition-colors">
-                    Student Record
-                  </Link>
-                </>
-              )}
+        {/* LOGO */}
+        <div className="flex-1">
+          <Link to="/" className="hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.png"
+                alt="AIMS Logo"
+                className="h-10 w-10 object-contain"
+              />
+              <span className="font-semibold font-mono tracking-widest text-2xl text-black">
+                AIMS
+              </span>
             </div>
-          )}
+          </Link>
+        </div>
 
-          {/* Right side actions */}
-          <div className="flex-none gap-3">
-            {isAuthenticated && user ? (
+        {/* Navigation Links */}
+        {isAuthenticated && (
+          <div className="flex gap-8 items-center pr-12">
+            <Link
+              to="/"
+              className="text-gray-700 hover:text-black font-medium transition-colors"
+            >
+              Dashboard
+            </Link>
+
+            {user?.role === "student" && (
               <>
-                <div className="dropdown dropdown-end">
-                  <div tabIndex={0} className="btn btn-ghost btn-circle avatar cursor-pointer">
-                    <div className="bg-blue-600 text-white rounded-full w-10 flex items-center justify-center font-bold text-sm">
-                      {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
-                    </div>
-                  </div>
-                  <ul
-                    tabIndex={0}
-                    className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
-                  >
-                    <li className="menu-title">
-                      <span>{user?.first_name} {user?.last_name}</span>
-                    </li>
-                    <li className="menu-title">
-                      <span className="text-xs text-gray-500">{user?.email}</span>
-                    </li>
-                    <li>
-                      <Link to="/">Home</Link>
-                    </li>
-                    {user?.role === 'student' && (
-                      <>
-                        <li>
-                          <Link to="/enrolled-courses">My Courses</Link>
-                        </li>
-                        <li>
-                          <Link to="/course-offerings">Available Courses</Link>
-                        </li>
-                        <li>
-                          <Link to="/student-record">Student Record</Link>
-                        </li>
-                      </>
-                    )}
-                    <li>
-                      <a onClick={handleLogout} className="text-error">
-                        <LogOut className="size-4" />
-                        Logout
-                      </a>
-                    </li>
-                  </ul>
-                </div>
+                <Link
+                  to="/enrolled-courses"
+                  className="text-gray-700 hover:text-black font-medium transition-colors"
+                >
+                  My Courses
+                </Link>
+
+                <Link
+                  to="/course-offerings"
+                  className="text-gray-700 hover:text-black font-medium transition-colors"
+                >
+                  Browse Courses
+                </Link>
+
+                <Link
+                  to="/student-record"
+                  className="text-gray-700 hover:text-black font-medium"
+                >
+                  Student Record
+                </Link>
               </>
-            ) : (
-              <Link
-                to="/login"
-                className="btn btn-primary gap-2 btn-sm"
-              >
-                <LogIn className="size-4" />
-                Login
-              </Link>
             )}
           </div>
+        )}
+
+        {/* Right side actions */}
+        <div className="flex-none gap-3">
+          {isAuthenticated && user ? (
+            <div className="dropdown dropdown-end">
+              <div tabIndex={0} className="btn btn-ghost btn-circle avatar cursor-pointer">
+                <div className="bg-blue-600 text-white rounded-full w-10 flex items-center justify-center font-bold text-sm">
+                  {user?.first_name?.charAt(0)}
+                  {user?.last_name?.charAt(0)}
+                </div>
+              </div>
+
+              {/* DROPDOWN */}
+              <ul
+                tabIndex={0}
+                className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+              >
+                <li className="menu-title">
+                  <span>
+                    {user?.first_name} {user?.last_name}
+                  </span>
+                </li>
+
+                <li className="menu-title">
+                  <span className="text-xs text-gray-500">{user?.email}</span>
+                </li>
+
+                <li>
+                  <Link to="/">Home</Link>
+                </li>
+
+                {user?.role === "student" && (
+                  <>
+                    <li>
+                      <Link to="/enrolled-courses">My Courses</Link>
+                    </li>
+                    <li>
+                      <Link to="/course-offerings">Available Courses</Link>
+                    </li>
+                    <li>
+                      <Link to="/student-record">Student Record</Link>
+                    </li>
+                  </>
+                )}
+
+                <li>
+                  <a onClick={handleLogout} className="text-error">
+                    <LogOut className="size-4" />
+                    Logout
+                  </a>
+                </li>
+              </ul>
+            </div>
+          ) : null}
         </div>
+      </div>
     </div>
   );
 }

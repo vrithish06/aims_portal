@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
-import { Card, CardHeader, CardBody, CardFooter } from '../components/Card'
-import { Breadcrumb } from '../components/Breadcrumb'
-import { Container, Layout, MainContent, Sidebar } from '../components/Layout'
-import { BookOpen, Users, Calendar, User, Mail, Award } from 'lucide-react'
+import { BookOpen, User, Mail, Award } from 'lucide-react'
 
 function StudentRecordPage() {
   const [studentInfo, setStudentInfo] = useState(null)
@@ -62,29 +59,24 @@ function StudentRecordPage() {
     }
   }
 
-  const breadcrumbItems = [
-    { label: 'Home', href: '/' },
-    { label: 'Student Record', current: true }
-  ]
-
   const getGradeColor = (grade) => {
-    if (!grade) return 'var(--neutral-500)'
+    if (!grade) return 'text-gray-600'
     const gradeMap = {
-      'A': 'var(--success-main)',
-      'B': 'var(--primary-main)',
-      'C': 'var(--warning-main)',
-      'D': 'var(--danger-main)',
-      'F': 'var(--danger-dark)'
+      'A': 'text-green-600',
+      'B': 'text-blue-600',
+      'C': 'text-yellow-600',
+      'D': 'text-orange-600',
+      'F': 'text-red-600'
     }
-    return gradeMap[grade.charAt(0)] || 'var(--neutral-600)'
+    return gradeMap[grade.charAt(0)] || 'text-gray-600'
   }
 
   const getStatusColor = (status) => {
     switch(status?.toLowerCase()) {
-      case 'enrolled': return 'var(--primary-main)'
-      case 'completed': return 'var(--success-main)'
-      case 'dropped': return 'var(--danger-main)'
-      default: return 'var(--neutral-500)'
+      case 'enrolled': return 'text-green-600 bg-green-100'
+      case 'completed': return 'text-blue-600 bg-blue-100'
+      case 'dropped': return 'text-red-600 bg-red-100'
+      default: return 'text-gray-600 bg-gray-100'
     }
   }
 
@@ -93,201 +85,149 @@ function StudentRecordPage() {
   }
 
   return (
-    <Layout>
-      <Sidebar>
-        <h3 style={{paddingBottom: 'var(--spacing-md)'}}>Menu</h3>
-        <ul style={{listStyle: 'none', padding: 0}}>
-          <li style={{marginBottom: 'var(--spacing-sm)'}}><a href="/">Dashboard</a></li>
-          <li style={{marginBottom: 'var(--spacing-sm)'}}><a href="/enrolled-courses">My Courses</a></li>
-          <li style={{marginBottom: 'var(--spacing-sm)'}}><a href="/course-offerings">Available Courses</a></li>
-          <li style={{marginBottom: 'var(--spacing-sm)'}}><a href="/student-record" style={{color: 'var(--primary-main)', fontWeight: 600}}>Student Record</a></li>
-        </ul>
-      </Sidebar>
-      <MainContent>
-        <Container>
-          <Breadcrumb items={breadcrumbItems} />
-          
-          <div style={{marginBottom: 'var(--spacing-lg)'}}>
-            <h1 style={{fontSize: '2rem', fontWeight: 700, marginBottom: 'var(--spacing-sm)'}}>Student Record</h1>
-            <p style={{color: 'var(--neutral-600)'}}>Complete academic record and course history</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-4xl font-bold mb-2 flex items-center gap-2 text-gray-900">
+          <BookOpen className="w-8 h-8 text-blue-600" />
+          Student Record
+        </h1>
+        <p className="text-lg text-gray-600">Complete academic record and course history</p>
+      </div>
+
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+
+        {loading ? (
+          <div className="flex justify-center items-center min-h-screen">
+            <span className="loading loading-spinner loading-lg"></span>
           </div>
-
-          {loading ? (
-            <div style={{textAlign: 'center', padding: 'var(--spacing-xl)'}}>
-              <div style={{
-                display: 'inline-block',
-                width: '40px',
-                height: '40px',
-                border: '4px solid var(--neutral-200)',
-                borderTop: '4px solid var(--primary-main)',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }}></div>
-              <p style={{marginTop: 'var(--spacing-md)', color: 'var(--neutral-600)'}}>Loading student record...</p>
-            </div>
-          ) : error ? (
-            <Card>
-              <CardBody>
-                <div style={{textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--danger-main)'}}>
-                  <p style={{fontSize: '1rem', fontWeight: 600}}>Error: {error}</p>
+        ) : error ? (
+          <div className="bg-red-50 border-2 border-red-200 text-red-800 px-6 py-4 rounded-lg">
+            <p className="font-semibold">Error: {error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Student Details Section */}
+            {studentInfo && (
+              <div className="bg-white rounded-lg border-2 border-gray-200 p-6 mb-6">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-blue-200">
+                  <User className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">Student Details</h2>
                 </div>
-              </CardBody>
-            </Card>
-          ) : (
-            <>
-              {/* Student Details Section */}
-              {studentInfo && (
-                <Card style={{marginBottom: 'var(--spacing-lg)'}}>
-                  <CardHeader>
-                    <div style={{display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)'}}>
-                      <User size={24} style={{color: 'var(--primary-main)'}} />
-                      <h2 style={{fontSize: '1.25rem', fontWeight: 700, margin: 0}}>Student Details</h2>
-                    </div>
-                  </CardHeader>
-                  <CardBody>
-                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)'}}>
-                      {/* Name */}
-                      <div style={{padding: 'var(--spacing-md)', background: 'var(--neutral-50)', borderRadius: 'var(--radius-md)'}}>
-                        <p style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-600)', marginBottom: 'var(--spacing-xs)'}}>Full Name</p>
-                        <p style={{fontSize: '1rem', fontWeight: 600, color: 'var(--neutral-900)'}}>
-                          {studentInfo.users?.first_name} {studentInfo.users?.last_name}
-                        </p>
-                      </div>
-
-                      {/* Email */}
-                      <div style={{padding: 'var(--spacing-md)', background: 'var(--neutral-50)', borderRadius: 'var(--radius-md)'}}>
-                        <p style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-600)', marginBottom: 'var(--spacing-xs)'}}>Email</p>
-                        <div style={{display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)'}}>
-                          <Mail size={16} style={{color: 'var(--primary-main)'}} />
-                          <p style={{fontSize: '0.9rem', color: 'var(--neutral-900)'}}>
-                            {studentInfo.users?.email || studentInfo.email || 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Branch/Department */}
-                      <div style={{padding: 'var(--spacing-md)', background: 'var(--neutral-50)', borderRadius: 'var(--radius-md)'}}>
-                        <p style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-600)', marginBottom: 'var(--spacing-xs)'}}>Branch/Department</p>
-                        <p style={{fontSize: '0.95rem', color: 'var(--neutral-900)'}}>{studentInfo.branch || 'Not Assigned'}</p>
-                      </div>
-
-                      {/* Degree */}
-                      <div style={{padding: 'var(--spacing-md)', background: 'var(--neutral-50)', borderRadius: 'var(--radius-md)'}}>
-                        <p style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-600)', marginBottom: 'var(--spacing-xs)'}}>Degree</p>
-                        <p style={{fontSize: '0.95rem', color: 'var(--neutral-900)'}}>{studentInfo.degree || 'B.Tech'}</p>
-                      </div>
-
-                      {/* CGPA */}
-                      <div style={{padding: 'var(--spacing-md)', background: 'var(--primary-50)', borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--primary-main)'}}>
-                        <p style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-700)', marginBottom: 'var(--spacing-xs)'}}>CGPA</p>
-                        <p style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary-main)'}}>
-                          {studentInfo.cgpa?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-
-                      {/* Total Credits */}
-                      <div style={{padding: 'var(--spacing-md)', background: 'var(--success-50)', borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--success-main)'}}>
-                        <p style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--success-700)', marginBottom: 'var(--spacing-xs)'}}>Total Credits Completed</p>
-                        <p style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--success-main)'}}>
-                          {studentInfo.total_credits_completed || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              )}
-
-              {/* Academic Record Section */}
-              <Card>
-                <CardHeader>
-                  <div style={{display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)'}}>
-                    <BookOpen size={24} style={{color: 'var(--primary-main)'}} />
-                    <h2 style={{fontSize: '1.25rem', fontWeight: 700, margin: 0}}>Course Records</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Name */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Full Name</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {studentInfo.users?.first_name} {studentInfo.users?.last_name}
+                    </p>
                   </div>
-                </CardHeader>
-                <CardBody>
-                  {enrolledCourses.length === 0 ? (
-                    <div style={{textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--neutral-600)'}}>
-                      <p>No course records found</p>
-                    </div>
-                  ) : (
-                    <div style={{overflowX: 'auto'}}>
-                      <table style={{width: '100%', borderCollapse: 'collapse'}}>
-                        <thead>
-                          <tr style={{borderBottom: '2px solid var(--neutral-200)'}}>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>S#</th>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>Course Code</th>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>Course Title</th>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>Enrollment Type</th>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>Status</th>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>Grade</th>
-                            <th style={{padding: 'var(--spacing-md)', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-700)'}}>Instructor</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {enrolledCourses.map((enrollment, idx) => (
-                            <tr key={enrollment.enrollment_id} style={{borderBottom: '1px solid var(--neutral-100)', transition: 'background 0.2s'}} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem', fontWeight: 500, color: 'var(--neutral-900)'}}>{idx + 1}</td>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary-main)'}}>
-                                {enrollment.course_offering?.course?.code || 'N/A'}
-                              </td>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem', color: 'var(--neutral-900)'}}>
-                                {enrollment.course_offering?.course?.title || 'N/A'}
-                              </td>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem'}}>
-                                <span style={{
-                                  display: 'inline-block',
-                                  padding: '4px 8px',
-                                  background: 'var(--neutral-100)',
-                                  color: 'var(--neutral-700)',
-                                  borderRadius: 'var(--radius-md)',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  textTransform: 'capitalize'
-                                }}>
-                                  {enrollment.enrol_type || 'Regular'}
-                                </span>
-                              </td>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem'}}>
-                                <span style={{
-                                  display: 'inline-block',
-                                  padding: '4px 8px',
-                                  background: `${getStatusColor(enrollment.enrol_status)}20`,
-                                  color: getStatusColor(enrollment.enrol_status),
-                                  borderRadius: 'var(--radius-md)',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  textTransform: 'capitalize'
-                                }}>
-                                  {enrollment.enrol_status || 'Unknown'}
-                                </span>
-                              </td>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem', fontWeight: 600, color: getGradeColor(enrollment.grade)}}>
-                                {enrollment.grade || '-'}
-                              </td>
-                              <td style={{padding: 'var(--spacing-md)', fontSize: '0.875rem', color: 'var(--neutral-600)'}}>
-                                {enrollment.course_offering?.instructor?.users?.first_name} {enrollment.course_offering?.instructor?.users?.last_name || 'TBA'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardBody>
-              </Card>
-            </>
-          )}
-        </Container>
-      </MainContent>
 
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </Layout>
+                  {/* Email */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Email</p>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-blue-600" />
+                      <p className="text-sm text-gray-900">
+                        {studentInfo.users?.email || studentInfo.email || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Branch/Department */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Branch/Department</p>
+                    <p className="text-sm text-gray-900">{studentInfo.branch || 'Not Assigned'}</p>
+                  </div>
+
+                  {/* Degree */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Degree</p>
+                    <p className="text-sm text-gray-900">{studentInfo.degree || 'B.Tech'}</p>
+                  </div>
+
+                  {/* CGPA */}
+                  <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-l-4 border-blue-600">
+                    <p className="text-xs font-semibold text-blue-700 mb-2">CGPA</p>
+                    <p className="text-3xl font-bold text-blue-600">
+                      {studentInfo.cgpa?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+
+                  {/* Total Credits */}
+                  <div className="bg-gradient-to-br from-green-100 to-green-50 p-4 rounded-lg border-l-4 border-green-600">
+                    <p className="text-xs font-semibold text-green-700 mb-2">Total Credits Completed</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {studentInfo.total_credits_completed || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Academic Record Section */}
+            <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-blue-200">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+                <h2 className="text-2xl font-bold text-gray-900">Course Records</h2>
+              </div>
+              {enrolledCourses.length === 0 ? (
+                <div className="text-center py-8 text-gray-600">
+                  <p>No course records found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">S#</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Course Code</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Course Title</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Enrollment Type</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Grade</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Instructor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enrolledCourses.map((enrollment, idx) => (
+                        <tr key={enrollment.enrollment_id} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{idx + 1}</td>
+                          <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                            {enrollment.course_offering?.course?.code || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {enrollment.course_offering?.course?.title || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded font-semibold text-xs capitalize">
+                              {enrollment.enrol_type || 'Regular'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`inline-block px-3 py-1 rounded font-semibold text-xs capitalize ${getStatusColor(enrollment.enrol_status)}`}>
+                              {enrollment.enrol_status || 'Unknown'}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-3 text-sm font-semibold ${getGradeColor(enrollment.grade)}`}>
+                            {enrollment.grade || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {enrollment.course_offering?.instructor?.users?.first_name} {enrollment.course_offering?.instructor?.users?.last_name || 'TBA'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -206,21 +206,11 @@ function CourseOfferingsPage() {
       {/* Search Bar with Filter Button */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by course code or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-            />
-          </div>
           <button
             onClick={toggleFilters}
-            className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors ${
+            className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors flex-shrink-0 ${
               showFilters 
-                ? 'bg-blue-600 text-white border-blue-600' 
+                ? 'bg-amber-500 text-white border-amber-500' 
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
           >
@@ -234,13 +224,23 @@ function CourseOfferingsPage() {
                 <ListFilter className="w-5 h-5" />
                 <span className="font-medium">Filters</span>
                 {hasActiveFilters() && (
-                  <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {Object.values(filters).reduce((acc, curr) => acc + curr.length, 0)}
                   </span>
                 )}
               </>
             )}
           </button>
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by course code or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            />
+          </div>
         </div>
       </div>
 
@@ -249,7 +249,7 @@ function CourseOfferingsPage() {
         {/* Filters Sidebar - Conditional Rendering */}
         {showFilters && (
           <div className="w-80 flex-shrink-0" onKeyPress={handleFilterKeyPress}>
-            <div className="bg-white rounded-lg border border-gray-300 p-6 sticky top-24">
+            <div className="bg-blue-50 rounded-lg border border-blue-300 p-6 sticky top-24">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900">Filters</h3>
                 {Object.values(tempFilters).some(f => f.length > 0) && (
@@ -386,15 +386,15 @@ function CourseOfferingsPage() {
                   <div 
                     key={offering.offering_id}
                     onClick={() => handleCourseClick(offering)}
-                    className="bg-white border-2 border-gray-300 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                    className="bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 rounded-lg p-6 cursor-pointer hover:shadow-xl transition-all hover:border-blue-400"
                   >
                     {/* Course Code - Link Style */}
-                    <div className="mb-3">
-                      <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-blue-600 hover:underline font-medium">
+                    <div className="mb-4">
+                      <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-2xl text-blue-700 hover:text-blue-900 hover:underline font-bold">
                         {course?.code}
                       </a>
                       {course?.title && (
-                        <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-blue-600 hover:underline font-medium block">
+                        <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-lg text-blue-600 hover:text-blue-800 hover:underline font-semibold block mt-1">
                           {course?.title}
                         </a>
                       )}
@@ -402,34 +402,34 @@ function CourseOfferingsPage() {
 
                     {/* Course Details */}
                     <div className="space-y-2 text-sm mb-6">
-                      <p>
-                        <span className="font-semibold">CREDITS</span> {course?.ltp || 'N/A'}. 
-                        <span className="font-semibold ml-2">STATUS</span> 
-                        <span className={`ml-1 ${
-                          offering.status === 'open' ? 'text-green-700' : 
-                          offering.status === 'closed' ? 'text-red-700' : 
-                          offering.status === 'ongoing' ? 'text-yellow-700' : 
-                          'text-blue-700'
+                      <p className="text-gray-800">
+                        <span className="font-bold text-gray-900">CREDITS</span> <span className="text-gray-700 font-medium">{course?.ltp || 'N/A'}</span>. 
+                        <span className="font-bold text-gray-900 ml-2">STATUS</span> 
+                        <span className={`ml-1 font-bold ${
+                          offering.status === 'open' ? 'text-green-600 bg-green-100 px-2 py-0.5 rounded' : 
+                          offering.status === 'closed' ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded' : 
+                          offering.status === 'ongoing' ? 'text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded' : 
+                          'text-blue-600 bg-blue-100 px-2 py-0.5 rounded'
                         }`}>
                           {offering.status?.charAt(0).toUpperCase() + offering.status?.slice(1) || 'Unknown'}
                         </span>
-                        . <span className="font-semibold ml-2">SESSION</span> {offering.acad_session || 'N/A'}.
+                        . <span className="font-bold text-gray-900 ml-2">SESSION</span> <span className="text-gray-700 font-medium">{offering.acad_session || 'N/A'}</span>.
                       </p>
 
-                      <p>
-                        <span className="font-semibold">ENROLLMENT</span> {enrollmentCount} in Sec.-{offering.section || 'A'}.
+                      <p className="text-gray-800">
+                        <span className="font-bold text-gray-900">ENROLLMENT</span> <span className="text-gray-700 font-medium">{enrollmentCount} in Sec.-{offering.section || 'A'}</span>.
                       </p>
 
-                      <p>
-                        <span className="font-semibold">OFFERED BY</span> {offering.dept_name || 'N/A'}.
+                      <p className="text-gray-800">
+                        <span className="font-bold text-gray-900">OFFERED BY</span> <span className="text-gray-700 font-medium">{offering.dept_name || 'N/A'}</span>.
                       </p>
 
-                      <p>
-                        <span className="font-semibold">SLOT</span> {offering.slot || 'N/A'}.
+                      <p className="text-gray-800">
+                        <span className="font-bold text-gray-900">SLOT</span> <span className="text-gray-700 font-medium">{offering.slot || 'N/A'}</span>.
                       </p>
 
-                      <p>
-                        <span className="font-semibold">INSTRUCTOR(S)</span> {instructor ? `${instructor.first_name} ${instructor.last_name}` : 'N/A'}.
+                      <p className="text-gray-800">
+                        <span className="font-bold text-gray-900">INSTRUCTOR(S)</span> <span className="text-gray-700 font-medium">{instructor ? `${instructor.first_name} ${instructor.last_name}` : 'N/A'}</span>.
                       </p>
                     </div>
 

@@ -75,137 +75,142 @@ function EnrolledCoursesPage() {
   const credits = calculateCredits();
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-2">
-            <BookOpen className="w-8 h-8" />
-            My Enrolled Courses
-          </h1>
-          <p className="text-lg text-gray-600">
-            Total enrolled: {courses.length} course{courses.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-4xl font-bold mb-2 flex items-center gap-2 text-gray-900">
+          <BookOpen className="w-8 h-8 text-blue-600" />
+          My Enrolled Courses
+        </h1>
+        <p className="text-lg text-gray-600">
+          Total enrolled: {courses.length} course{courses.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
 
         {/* Credits Summary */}
         {courses.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="card bg-primary text-primary-content shadow-lg">
-              <div className="card-body">
-                <h2 className="card-title">Total Credits</h2>
-                <p className="text-4xl font-bold">{credits.total}</p>
-              </div>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+              <h2 className="text-gray-700 font-bold mb-2">Total Credits</h2>
+              <p className="text-4xl font-bold text-blue-600">{credits.total}</p>
             </div>
-            <div className="card bg-success text-success-content shadow-lg">
-              <div className="card-body">
-                <h2 className="card-title">Active Credits</h2>
-                <p className="text-4xl font-bold">{credits.completed}</p>
-              </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+              <h2 className="text-gray-700 font-bold mb-2">Active Credits</h2>
+              <p className="text-4xl font-bold text-green-600">{credits.completed}</p>
             </div>
           </div>
         )}
 
         {courses.length === 0 ? (
-          <div className="alert alert-info">
+          <div className="bg-blue-50 border-2 border-blue-200 text-blue-800 px-6 py-4 rounded-lg">
             <span>📚 You haven't enrolled in any courses yet. Visit the <strong>Available Courses</strong> page to enroll.</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
             {courses.map((enrollment) => {
               const course = enrollment.course_offering?.course;
               const offering = enrollment.course_offering;
               
               return (
-                <div key={enrollment.id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition cursor-pointer" onClick={() => handleEnrollmentClick(enrollment)}>
-                  <div className="card-body">
-                    <h2 className="card-title text-lg">
+                <div key={enrollment.id} className="bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 rounded-lg p-6 cursor-pointer hover:shadow-xl transition-all hover:border-blue-400" onClick={() => handleEnrollmentClick(enrollment)}>
+                  <div className="mb-4">
+                    <h2 className="text-2xl text-blue-700 font-bold">
                       {course?.code || 'N/A'}
                     </h2>
-                    <p className="font-semibold">{course?.title || 'Course'}</p>
-                    
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-semibold">Credits:</span> {course?.ltp || 'N/A'}</p>
-                      <p><span className="font-semibold">Session:</span> {offering?.acad_session || 'N/A'}</p>
-                      <p><span className="font-semibold">Section:</span> {offering?.section || 'N/A'}</p>
-                      <p><span className="font-semibold">Slot:</span> {offering?.slot || 'N/A'}</p>
-                      <p>
-                        <span className="font-semibold">Status:</span> 
-                        <span className={`ml-2 badge ${
-                          enrollment.enrol_status === 'enrolled' ? 'badge-success' : enrollment.enrol_status === 'completed' ? 'badge-info' : 'badge-warning'
-                        }`}>
-                          {enrollment.enrol_status || 'pending'}
-                        </span>
-                      </p>
-                      {enrollment.grade && (
-                        <p><span className="font-semibold">Grade:</span> <span className="badge badge-lg">{enrollment.grade}</span></p>
-                      )}
-                    </div>
-
-                    <div className="card-actions justify-end mt-4">
-                      <button className="btn btn-sm btn-outline" onClick={() => handleEnrollmentClick(enrollment)}>
-                        View Details
-                      </button>
-                    </div>
+                    <p className="text-lg text-blue-600 font-semibold mt-1">{course?.title || 'Course'}</p>
                   </div>
+                  
+                  <div className="space-y-2 text-sm mb-6">
+                    <p className="text-gray-800">
+                      <span className="font-bold text-gray-900">CREDITS</span> <span className="text-gray-700 font-medium">{course?.ltp || 'N/A'}</span>. 
+                      <span className="font-bold text-gray-900 ml-2">SESSION</span> <span className="text-gray-700 font-medium">{offering?.acad_session || 'N/A'}</span>.
+                    </p>
+                    <p className="text-gray-800">
+                      <span className="font-bold text-gray-900">SECTION</span> <span className="text-gray-700 font-medium">{offering?.section || 'N/A'}</span>.
+                    </p>
+                    <p className="text-gray-800">
+                      <span className="font-bold text-gray-900">SLOT</span> <span className="text-gray-700 font-medium">{offering?.slot || 'N/A'}</span>.
+                    </p>
+                    <p className="text-gray-800">
+                      <span className="font-bold text-gray-900">STATUS</span> 
+                      <span className={`ml-1 font-bold px-2 py-0.5 rounded ${
+                        enrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' : 
+                        enrollment.enrol_status === 'completed' ? 'text-blue-600 bg-blue-100' : 
+                        'text-yellow-600 bg-yellow-100'
+                      }`}>
+                        {enrollment.enrol_status ? enrollment.enrol_status.charAt(0).toUpperCase() + enrollment.enrol_status.slice(1) : 'Pending'}
+                      </span>
+                    </p>
+                    {enrollment.grade && (
+                      <p className="text-gray-800"><span className="font-bold text-gray-900">GRADE</span> <span className="text-gray-700 font-medium">{enrollment.grade}</span></p>
+                    )}
+                  </div>
+
+                  <button className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors" onClick={() => handleEnrollmentClick(enrollment)}>
+                    View Details
+                  </button>
                 </div>
               );
             })}
           </div>
         )}
+        </div>
       </div>
 
       {/* Modal for enrollment details */}
       {selectedEnrollment && (
-        <div className="modal modal-open">
-          <div className="modal-box w-11/12 max-w-2xl">
-            <h3 className="font-bold text-lg mb-4">
-              Enrollment Details - {selectedEnrollment.course_offering?.course?.code}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-11/12 max-w-2xl p-8">
+            <h3 className="font-bold text-2xl mb-6 text-gray-900 border-b-2 border-blue-200 pb-4">
+              Enrollment Details - <span className="text-blue-600">{selectedEnrollment.course_offering?.course?.code}</span>
             </h3>
             
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Course Title</p>
-                  <p className="text-lg">{selectedEnrollment.course_offering?.course?.title}</p>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Course Title</p>
+                  <p className="text-lg font-semibold text-gray-900">{selectedEnrollment.course_offering?.course?.title}</p>
                 </div>
-                <div>
-                  <p>
-                    <span className="font-semibold">Status</span>
-                    <span className={`badge badge-lg ml-2 ${
-                      selectedEnrollment.enrol_status === 'enrolled' ? 'badge-success' : selectedEnrollment.enrol_status === 'completed' ? 'badge-info' : 'badge-warning'
-                    }`}>
-                      {selectedEnrollment.enrol_status}
-                    </span>
-                  </p>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Status</p>
+                  <span className={`font-bold px-3 py-1 rounded ${
+                    selectedEnrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' : 
+                    selectedEnrollment.enrol_status === 'completed' ? 'text-blue-600 bg-blue-100' : 
+                    'text-yellow-600 bg-yellow-100'
+                  }`}>
+                    {selectedEnrollment.enrol_status ? selectedEnrollment.enrol_status.charAt(0).toUpperCase() + selectedEnrollment.enrol_status.slice(1) : 'Pending'}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Credits</p>
-                  <p className="text-lg">{selectedEnrollment.course_offering?.course?.ltp}</p>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Credits</p>
+                  <p className="text-lg font-semibold text-gray-900">{selectedEnrollment.course_offering?.course?.ltp}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Grade</p>
-                  <p className="text-lg">{selectedEnrollment.grade || 'Not Graded'}</p>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Grade</p>
+                  <p className="text-lg font-semibold text-gray-900">{selectedEnrollment.grade || 'Not Graded'}</p>
                 </div>
               </div>
 
-              <div className="divider"></div>
-
-              <div>
-                <p className="text-sm font-semibold text-gray-600 mb-2">Course Details</p>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-semibold">Department:</span> {selectedEnrollment.course_offering?.dept_name}</p>
-                  <p><span className="font-semibold">Session:</span> {selectedEnrollment.course_offering?.acad_session}</p>
-                  <p><span className="font-semibold">Section:</span> {selectedEnrollment.course_offering?.section}</p>
-                  <p><span className="font-semibold">Slot:</span> {selectedEnrollment.course_offering?.slot}</p>
+              <div className="border-t-2 border-blue-200 pt-6">
+                <p className="text-lg font-bold text-gray-900 mb-4">Course Details</p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <p className="text-gray-700"><span className="font-bold text-gray-900">Department:</span> <span className="font-medium">{selectedEnrollment.course_offering?.dept_name}</span></p>
+                  <p className="text-gray-700"><span className="font-bold text-gray-900">Session:</span> <span className="font-medium">{selectedEnrollment.course_offering?.acad_session}</span></p>
+                  <p className="text-gray-700"><span className="font-bold text-gray-900">Section:</span> <span className="font-medium">{selectedEnrollment.course_offering?.section}</span></p>
+                  <p className="text-gray-700"><span className="font-bold text-gray-900">Slot:</span> <span className="font-medium">{selectedEnrollment.course_offering?.slot}</span></p>
                 </div>
               </div>
             </div>
 
-            <div className="modal-action">
-              <button className="btn" onClick={() => setSelectedEnrollment(null)}>Close</button>
+            <div className="flex justify-end mt-8 pt-6 border-t border-gray-200">
+              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors" onClick={() => setSelectedEnrollment(null)}>
+                Close
+              </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => setSelectedEnrollment(null)}></div>
         </div>
       )}
     </div>
