@@ -579,7 +579,7 @@ export const getEnrolledCourses = async (req, res) => {
   }
 };
 
-// Get all course offerings
+//  Get all course offerings
 export const getCourseOfferings = async (req, res) => {
   try {
     const { data, error } = await supabase
