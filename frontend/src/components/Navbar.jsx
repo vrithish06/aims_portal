@@ -51,6 +51,9 @@ function Navbar() {
                   <Link to="/course-offerings" className="text-gray-700 hover:text-black font-medium transition-colors">
                     Browse Courses
                   </Link>
+                  <Link to="/student-record" className="text-gray-700 hover:text-black font-medium transition-colors">
+                    Student Record
+                  </Link>
                 </>
               )}
             </div>
@@ -86,6 +89,9 @@ function Navbar() {
                         </li>
                         <li>
                           <Link to="/course-offerings">Available Courses</Link>
+                        </li>
+                        <li>
+                          <Link to="/student-record">Student Record</Link>
                         </li>
                       </>
                     )}
