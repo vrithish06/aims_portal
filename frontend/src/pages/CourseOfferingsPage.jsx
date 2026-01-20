@@ -73,13 +73,11 @@ function CourseOfferingsPage() {
     }
   };
 
-  const handleEnroll = async (offeringId) => {
+  const handleEnroll = async (offeringId, enrollType = 'Credit') => {
     if (!user?.user_id) {
       toast.error('Please login first');
       return;
     }
-
-    const enrollType = selectedEnrollType[offeringId] || 'regular';
 
     try {
       setEnrolling(offeringId);
@@ -449,40 +447,49 @@ function CourseOfferingsPage() {
                           </>
                         ) : (
                           <>
-                            Enroll
+                            {selectedEnrollType[offering.offering_id] ? selectedEnrollType[offering.offering_id] : 'Enroll'}
                             <ChevronDown className="w-4 h-4" />
                           </>
                         )}
                       </button>
                       
                       {openDropdown === offering.offering_id && (
-                        <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg z-50">
+                        <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 rounded shadow-lg z-50">
                           <button
                             onClick={() => {
-                              setSelectedEnrollType(prev => ({ ...prev, [offering.offering_id]: 'regular' }));
-                              handleEnroll(offering.offering_id);
+                              handleEnroll(offering.offering_id, 'Credit');
+                              setOpenDropdown(null);
                             }}
                             className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
                           >
-                            Regular
+                            Credit
                           </button>
                           <button
                             onClick={() => {
-                              setSelectedEnrollType(prev => ({ ...prev, [offering.offering_id]: 'audit' }));
-                              handleEnroll(offering.offering_id);
+                              handleEnroll(offering.offering_id, 'Credit for Minor');
+                              setOpenDropdown(null);
                             }}
                             className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
                           >
-                            Audit
+                            Credit for Minor
                           </button>
                           <button
                             onClick={() => {
-                              setSelectedEnrollType(prev => ({ ...prev, [offering.offering_id]: 'backlog' }));
-                              handleEnroll(offering.offering_id);
+                              handleEnroll(offering.offering_id, 'Credit for Concentration');
+                              setOpenDropdown(null);
                             }}
                             className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
                           >
-                            Backlog
+                            Credit for Concentration
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleEnroll(offering.offering_id, 'Credit for Audit');
+                              setOpenDropdown(null);
+                            }}
+                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
+                          >
+                            Credit for Audit
                           </button>
                         </div>
                       )}

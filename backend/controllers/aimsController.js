@@ -95,7 +95,7 @@ export const createUser = async (req, res) => {
 //creating course
 export const createCourse = async (req, res) => {
   // Identity comes from session; do not trust params/body for instructor identity
-  const instructorId = req.user?.user_id;
+  const userId = req.user?.user_id;
 
   const {
     code,
@@ -115,6 +115,20 @@ export const createCourse = async (req, res) => {
   }
 
   try {
+    // Get instructor_id from user_id
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
     const { data, error } = await supabase
       .from("course")
       .insert({
@@ -124,7 +138,7 @@ export const createCourse = async (req, res) => {
         status,
         has_lab,
         pre_req,
-        author_id: instructorId
+        author_id: instructorData.instructor_id
       })
       .select()
       .single();
@@ -147,12 +161,12 @@ export const createCourse = async (req, res) => {
 };
 // Create instructor
 export const createInstructor = async (req, res) => {
-  const { user_id, instructor_number, branch, year_joined } = req.body;
+  const { user_id, branch, year_joined } = req.body;
 
-  if (!user_id || !instructor_number) {
+  if (!user_id) {
     return res.status(400).json({
       success: false,
-      message: "user_id and instructor_number are required"
+      message: "user_id is required"
     });
   }
 
@@ -161,9 +175,7 @@ export const createInstructor = async (req, res) => {
       .from("instructor")
       .insert({ 
         user_id, 
-        instructor_number, 
         branch, 
-        // salary,  // Remove this if column doesn't exist
         year_joined 
       })
       .select()
@@ -287,12 +299,12 @@ export const getStudent = async (req, res) => {
 export const updateStudent = async (req, res) => {
   // Use session identity for updates
   const user_id = req.user?.user_id;
-  const { roll_number, branch, cgpa, total_credits_completed, degree } = req.body;
+  const { branch, cgpa, total_credits_completed, degree } = req.body;
   
   try {
     const { data, error } = await supabase
       .from("student")
-      .update({ roll_number, branch, cgpa, total_credits_completed, degree })
+      .update({ branch, cgpa, total_credits_completed, degree })
       .eq('user_id', user_id)
       .select()
       .single();
@@ -328,6 +340,8 @@ export const createEnrollment = async (req, res) => {
       enrol_status
     } = req.body;
 
+    console.log('[ENROLLMENT] Received data:', { enrol_type, enrol_status, offeringId, userId });
+
     if (!enrol_status || !enrol_type) {
       return res.status(400).json({
         success: false,
@@ -360,6 +374,8 @@ export const createEnrollment = async (req, res) => {
       .select()
       .single();
 
+    console.log('[ENROLLMENT] Database response:', { data, error });
+
     if (error) throw error;
 
     return res.status(201).json({
@@ -379,7 +395,7 @@ export const createEnrollment = async (req, res) => {
 //create course offering
 export const createOffering = async (req, res) => {
   // Instructor identity must come from session; courseId comes from URL
-  const instructorId = req.user?.user_id;
+  const userId = req.user?.user_id;
   const { courseId } = req.params;
   try{
   const {
@@ -388,20 +404,36 @@ export const createOffering = async (req, res) => {
     acad_session,
     status,
     slot,
-    section
+    section,
+    is_coordinator
   } = req.body;
+
+  // Get instructor_id from user_id
+  const { data: instructorData, error: instructorError } = await supabase
+    .from("instructor")
+    .select("instructor_id")
+    .eq('user_id', userId)
+    .single();
+
+  if (instructorError || !instructorData) {
+    return res.status(404).json({
+      success: false,
+      message: "Instructor record not found"
+    });
+  }
 
   const {data , error} = await supabase
     .from("course_offering")
     .insert({
-      course_id: courseId,
+      course_id: parseInt(courseId),
       degree: degree,
       dept_name: dept_name,
       acad_session: acad_session,
       status: status,
       slot: slot,
       section: section,
-      instructor_id: instructorId
+      instructor_id: instructorData.instructor_id,
+      is_coordinator: is_coordinator || false
     })
     .select()
     .single();
@@ -612,11 +644,9 @@ export const loginUser = async (req, res) => {
 
 // Get enrolled courses for a student
 export const getEnrolledCourses = async (req, res) => {
-  // Derive student from session; do not trust URL params for identity
   const userId = req.user?.user_id;
 
   try {
-    // First, get the student record to find their student_id
     const { data: studentData, error: studentError } = await supabase
       .from("student")
       .select("student_id")
@@ -631,11 +661,14 @@ export const getEnrolledCourses = async (req, res) => {
       });
     }
 
-    // Now get enrollments using student_id
     const { data, error } = await supabase
       .from("course_enrollment")
       .select(`
-        *,
+        enrollment_id,
+        enrol_type,
+        enrol_status,
+        grade,
+        offering_id,
         course_offering:offering_id (
           *,
           course:course_id (
@@ -715,10 +748,18 @@ export const getOfferingEnrollments = async (req, res) => {
   try {
     console.log(`[ENROLLMENTS] Fetching enrollments for offering: ${offeringId}`);
 
-    // First get all enrollments for this offering
+    // Get all enrollments for this offering with explicit field selection
     const { data: enrollmentData, error: enrollmentError } = await supabase
       .from("course_enrollment")
-      .select("*")
+      .select(`
+        enrollment_id,
+        student_id,
+        offering_id,
+        enrol_type,
+        enrol_status,
+        grade,
+        is_deleted
+      `)
       .eq('offering_id', parseInt(offeringId))
       .eq('is_deleted', false);
 
@@ -738,7 +779,7 @@ export const getOfferingEnrollments = async (req, res) => {
       });
     }
 
-    // Now get student details for each enrollment
+    // Get student details for each enrollment
     const studentIds = enrollmentData.map(e => e.student_id);
     const { data: studentData, error: studentError } = await supabase
       .from("student")
@@ -768,7 +809,12 @@ export const getOfferingEnrollments = async (req, res) => {
 
     // Combine enrollment and student data
     const transformedData = enrollmentData.map(enrollment => ({
-      ...enrollment,
+      enrollment_id: enrollment.enrollment_id,
+      student_id: enrollment.student_id,
+      offering_id: enrollment.offering_id,
+      enrol_type: enrollment.enrol_type,  // Explicitly include enrollment type
+      enrol_status: enrollment.enrol_status,
+      grade: enrollment.grade || 'N/A',
       student_name: studentMap[enrollment.student_id]?.users ? 
         `${studentMap[enrollment.student_id].users.first_name} ${studentMap[enrollment.student_id].users.last_name}` : 'N/A',
       student_email: studentMap[enrollment.student_id]?.users?.email || 'N/A'
@@ -790,3 +836,4 @@ export const getOfferingEnrollments = async (req, res) => {
     });
   }
 };
+

@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
-import { Users, ArrowLeft, BookOpen } from 'lucide-react';
+import { Users, ArrowLeft, BookOpen, X, ChevronDown } from 'lucide-react';
 
 function CourseDetailsPage() {
   const { offeringId } = useParams();
@@ -12,6 +12,9 @@ function CourseDetailsPage() {
   const [offering, setOffering] = useState(location.state?.offering || null);
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [loading, setLoading] = useState(!offering);
+  const [enrollmentTypeFilter, setEnrollmentTypeFilter] = useState([]);
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
@@ -79,6 +82,34 @@ function CourseDetailsPage() {
 
   const course = offering.course;
   const instructor = offering.instructor?.users;
+
+  // Get unique enrollment types and statuses
+  const uniqueEnrollmentTypes = [...new Set(enrolledStudents.map(s => s.enrol_type).filter(Boolean))];
+  const uniqueStatuses = [...new Set(enrolledStudents.map(s => s.enrol_status).filter(Boolean))];
+
+  // Filter students based on selected filters
+  const filteredStudents = enrolledStudents.filter(student => {
+    const typeMatch = enrollmentTypeFilter.length === 0 || enrollmentTypeFilter.includes(student.enrol_type);
+    const statusMatch = statusFilter.length === 0 || statusFilter.includes(student.enrol_status);
+    return typeMatch && statusMatch;
+  });
+
+  const toggleEnrollmentTypeFilter = (type) => {
+    setEnrollmentTypeFilter(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+  const toggleStatusFilter = (status) => {
+    setStatusFilter(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+  };
+
+  const clearFilters = () => {
+    setEnrollmentTypeFilter([]);
+    setStatusFilter([]);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -161,7 +192,7 @@ function CourseDetailsPage() {
             <Users className="w-6 h-6 text-blue-600" />
             <h3 className="text-2xl font-bold text-gray-900">Enrolled Students</h3>
             <span className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-full font-semibold">
-              {enrolledStudents.length}
+              {filteredStudents.length}
             </span>
           </div>
 
@@ -170,18 +201,69 @@ function CourseDetailsPage() {
               <span>No students enrolled in this course yet.</span>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* Table */}
+              {filteredStudents.length === 0 ? (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-lg">
+                  <span>No students match the selected filters.</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-100 border-b border-gray-200">
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Student Name</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Enrollment Type</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                    {/* Enrollment Type Header with Filter */}
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 relative group cursor-pointer">
+                      <div className="flex items-center gap-1">
+                        Enrollment Type
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                      </div>
+                      {/* Dropdown */}
+                      <div className="absolute left-0 mt-0 w-56 bg-white border border-gray-300 rounded-lg shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                        <div className="p-3 space-y-2">
+                          {uniqueEnrollmentTypes.map(type => (
+                            <label key={type} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                              <input
+                                type="checkbox"
+                                checked={enrollmentTypeFilter.includes(type)}
+                                onChange={() => toggleEnrollmentTypeFilter(type)}
+                                className="w-4 h-4 rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">{type}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </th>
+                    {/* Status Header with Filter */}
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 relative group cursor-pointer">
+                      <div className="flex items-center gap-1">
+                        Status
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                      </div>
+                      {/* Dropdown */}
+                      <div className="absolute left-0 mt-0 w-56 bg-white border border-gray-300 rounded-lg shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                        <div className="p-3 space-y-2">
+                          {uniqueStatuses.map(status => (
+                            <label key={status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                              <input
+                                type="checkbox"
+                                checked={statusFilter.includes(status)}
+                                onChange={() => toggleStatusFilter(status)}
+                                className="w-4 h-4 rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700 capitalize">{status}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {enrolledStudents.map((enrollment, idx) => (
+                  {filteredStudents.map((enrollment, idx) => (
                     <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm text-gray-900">{enrollment.student_name || 'N/A'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{enrollment.student_email || 'N/A'}</td>
@@ -203,7 +285,9 @@ function CourseDetailsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -93,8 +93,8 @@ create table public.course_enrollment (
           array[
             'Credit'::character varying,
             'Credit for Minor'::character varying,
-            'Credit for Concent'::character varying,
-            'Audit'::character varying
+            'Credit for Concentration'::character varying,
+            'Credit for Audit'::character varying
           ]
         )::text[]
       )
