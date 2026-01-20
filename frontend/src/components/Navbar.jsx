@@ -1,4 +1,4 @@
-import { LogOut, LogIn } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import { useEffect } from "react";
@@ -10,10 +10,7 @@ function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("Navbar updated - Auth:", {
-      isAuthenticated,
-      user: user?.email,
-    });
+    console.log("Navbar updated - Auth:", { isAuthenticated, user: user?.email });
   }, [isAuthenticated, user]);
 
   const handleLogout = () => {
@@ -41,10 +38,13 @@ function Navbar() {
           </Link>
         </div>
 
-        {/* NAV LINKS */}
+        {/* Navigation Links */}
         {isAuthenticated && (
           <div className="flex gap-8 items-center pr-12">
-            <Link className="text-gray-700 hover:text-black font-medium" to="/">
+            <Link
+              to="/"
+              className="text-gray-700 hover:text-black font-medium transition-colors"
+            >
               Dashboard
             </Link>
 
@@ -52,14 +52,14 @@ function Navbar() {
               <>
                 <Link
                   to="/enrolled-courses"
-                  className="text-gray-700 hover:text-black font-medium"
+                  className="text-gray-700 hover:text-black font-medium transition-colors"
                 >
                   My Courses
                 </Link>
 
                 <Link
                   to="/course-offerings"
-                  className="text-gray-700 hover:text-black font-medium"
+                  className="text-gray-700 hover:text-black font-medium transition-colors"
                 >
                   Browse Courses
                 </Link>
@@ -75,27 +75,21 @@ function Navbar() {
           </div>
         )}
 
-        {/* RIGHT SIDE */}
+        {/* Right side actions */}
         <div className="flex-none gap-3">
           {isAuthenticated && user ? (
             <div className="dropdown dropdown-end">
-
-              {/* AVATAR */}
-              <div
-                tabIndex={0}
-                className="btn btn-ghost btn-circle hover:bg-blue-100 transition-colors p-0"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">
-                  <span className="font-bold text-xl text-white text-center">
-                    {user.first_name?.charAt(0).toUpperCase()}
-                  </span>
+              <div tabIndex={0} className="btn btn-ghost btn-circle avatar cursor-pointer">
+                <div className="bg-blue-600 text-white rounded-full w-10 flex items-center justify-center font-bold text-sm">
+                  {user?.first_name?.charAt(0)}
+                  {user?.last_name?.charAt(0)}
                 </div>
               </div>
 
               {/* DROPDOWN */}
               <ul
                 tabIndex={0}
-                className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56"
+                className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
               >
                 <li className="menu-title">
                   <span>
@@ -104,9 +98,7 @@ function Navbar() {
                 </li>
 
                 <li className="menu-title">
-                  <span className="text-xs text-gray-500">
-                    {user?.email}
-                  </span>
+                  <span className="text-xs text-gray-500">{user?.email}</span>
                 </li>
 
                 <li>
@@ -135,12 +127,7 @@ function Navbar() {
                 </li>
               </ul>
             </div>
-          ) : (
-            <Link to="/login" className="btn btn-primary btn-sm gap-2">
-              <LogIn className="size-4" />
-              Login
-            </Link>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
