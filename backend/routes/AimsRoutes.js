@@ -217,5 +217,12 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
   }
 });
 
+router.post("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("aims.sid");
+    res.json({ success: true });
+  });
+});
+
 export default router;
 //kumarnaidu//tharun//"rithish"
