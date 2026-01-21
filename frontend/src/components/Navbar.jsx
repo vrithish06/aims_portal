@@ -79,10 +79,14 @@ function Navbar() {
         <div className="flex-none gap-3">
           {isAuthenticated && user ? (
             <div className="dropdown dropdown-end">
-              <div tabIndex={0} className="btn btn-ghost btn-circle avatar cursor-pointer">
-                <div className="bg-blue-600 text-white rounded-full w-10 flex items-center justify-center font-bold text-sm">
-                  {user?.first_name?.charAt(0)}
-                  {user?.last_name?.charAt(0)}
+              <div
+                tabIndex={0}
+                className="btn btn-ghost btn-circle hover:bg-blue-100 transition-colors p-0"
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">
+                  <span className="font-bold text-xl text-white text-center">
+                    {user.first_name?.charAt(0).toUpperCase()}
+                  </span>
                 </div>
               </div>
 
