@@ -1,42 +1,49 @@
-import axios from 'axios';
-import toast from 'react-hot-toast';
+import axios from "axios";
+import toast from "react-hot-toast";
 
-// Create axios instance with default config
+/**
+ * Axios client
+ * - baseURL is read from environment variables
+ * - works both locally and in production (Render)
+ */
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:3000',
-  withCredentials: true, // Include cookies/session by default
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true, // required for session cookies
   headers: {
-    'Content-Type': 'application/json'
-  }
+    "Content-Type": "application/json",
+  },
 });
 
 /**
- * Response interceptor: Handle 401 Unauthorized globally
- * When session expires or becomes invalid, clear frontend auth state and redirect to login
+ * Global response interceptor
+ * Handles expired / invalid sessions (401)
  */
 axiosClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Session expired or invalid - handle gracefully
-      console.log('[API] 401 Unauthorized - Session expired');
+      console.log("[API] 401 Unauthorized – session expired");
 
-      // Import here to avoid circular dependency
-      import('../store/authStore').then(({ default: useAuthStore }) => {
-        const clearAuth = useAuthStore.getState().clearAuth;
-        
+      try {
+        // Dynamic import to avoid circular dependency
+        const { default: useAuthStore } = await import(
+          "../store/authStore"
+        );
+
         // Clear frontend auth state
-        clearAuth();
-        
-        // Show message to user
-        toast.error('Session expired. Please log in again.');
-        
-        // Redirect to login (let useNavigate in component handle it, or use window.location)
-        // Optionally call /logout endpoint for server-side cleanup (fire-and-forget)
-        axios.post('/logout', {}, { withCredentials: true }).catch(() => {
-          // Ignore logout errors
-        });
-      });
+        useAuthStore.getState().clearAuth();
+
+        // Notify user
+        toast.error("Session expired. Please log in again.");
+
+        /**
+         * Fire-and-forget logout
+         * (backend should delete session row if exists)
+         */
+        axiosClient.post("/logout").catch(() => {});
+      } catch (e) {
+        console.error("[API] Failed to handle 401 cleanup", e);
+      }
     }
 
     return Promise.reject(error);
