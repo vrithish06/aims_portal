@@ -445,6 +445,11 @@ export const createOffering = async (req, res) => {
         message: error.message
       });
     }
+
+    return res.status(201).json({
+      success: true,
+      data
+    });
   } catch (err) {
     console.error("createOffering error:", err);
     return res.status(500).json({
