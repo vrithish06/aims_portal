@@ -590,6 +590,13 @@ export const loginUser = async (req, res) => {
         "[LOGIN] Session saved successfully. SID:",
         req.sessionID
       );
+      console.log(
+        "[LOGIN] Cookie config:",
+        JSON.stringify(req.sessionID, null, 2)
+      );
+      console.log(
+        "[LOGIN] Set-Cookie header will be sent by express-session"
+      );
 
       /* -----------------------------
          5️⃣ Respond AFTER save
