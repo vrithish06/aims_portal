@@ -58,28 +58,39 @@ app.use(morgan("dev"));
 ------------------------------ */
 const isProduction = process.env.NODE_ENV === "production";
 
-const cookieConfig = {
-  httpOnly: true,
-  secure: isProduction,              // ✅ HTTPS on Render
-  sameSite: isProduction ? "none" : "lax", // ✅ cross-site only in prod
-  maxAge: 24 * 60 * 60 * 1000,        // 1 day
+console.log("[SESSION] Mode:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
+
+const sessionConfig = {
+  name: "aims.sid",
+  secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
+  resave: false,
+  saveUninitialized: false,
+  proxy: isProduction,  // Trust proxy headers on Render
+  cookie: {
+    httpOnly: true,
+    secure: isProduction,  // HTTPS on Render only
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 24 * 60 * 60 * 1000,  // 1 day
+    path: "/"
+  }
 };
 
-// Add domain for production to ensure cookies work across subdomains/deployed URLs
+// Add domain only in production
 if (isProduction && process.env.BACKEND_URL) {
   const backendUrl = new URL(process.env.BACKEND_URL);
-  cookieConfig.domain = backendUrl.hostname;
+  sessionConfig.cookie.domain = backendUrl.hostname;
+  console.log("[SESSION] Domain set to:", backendUrl.hostname);
 }
 
-app.use(
-  session({
-    name: "aims.sid",
-    secret: process.env.SESSION_SECRET || "dev-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: cookieConfig,
-  })
-);
+console.log("[SESSION] Cookie config:", {
+  httpOnly: sessionConfig.cookie.httpOnly,
+  secure: sessionConfig.cookie.secure,
+  sameSite: sessionConfig.cookie.sameSite,
+  maxAge: sessionConfig.cookie.maxAge,
+  path: sessionConfig.cookie.path
+});
+
+app.use(session(sessionConfig));
 
 /* -----------------------------
    DEBUG (OPTIONAL)
