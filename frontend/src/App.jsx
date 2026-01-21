@@ -7,6 +7,7 @@ import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
 import CourseOfferingsPage from "./pages/CourseOfferingsPage";
 import CourseDetailsPage from "./pages/CourseDetailsPage";
 import StudentRecordPage from "./pages/StudentRecordPage";
+import CourseAddPage from "./pages/CourseAddPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
 import useAuthStore from "./store/authStore";
@@ -35,6 +36,7 @@ function App() {
         <Route path="/course-offerings" element={<ProtectedRoute><CourseOfferingsPage /></ProtectedRoute>} />
         <Route path="/student-record" element={<ProtectedRoute><StudentRecordPage /></ProtectedRoute>} />
         <Route path="/course/:offeringId" element={<ProtectedRoute><CourseDetailsPage /></ProtectedRoute>} />
+        <Route path="/course-add" element={<ProtectedRoute><CourseAddPage /></ProtectedRoute>} />
         <Route path="/product/:id" element={<ProductPage />} />
       </Routes>
     </div>

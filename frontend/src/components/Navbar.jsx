@@ -72,6 +72,24 @@ function Navbar() {
                 </Link>
               </>
             )}
+
+            {(user?.role === "instructor" || user?.role === "admin") && (
+              <>
+                <Link
+                  to="/course-offerings"
+                  className="text-gray-700 hover:text-black font-medium transition-colors"
+                >
+                  Courses
+                </Link>
+
+                <Link
+                  to="/course-add"
+                  className="text-gray-700 hover:text-black font-medium transition-colors"
+                >
+                  Add Course
+                </Link>
+              </>
+            )}
           </div>
         )}
 
