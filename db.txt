@@ -132,10 +132,12 @@ create table public.course_offering (
       (status)::text = any (
         (
           array[
-            'open'::character varying,
-            'closed'::character varying,
-            'ongoing'::character varying,
-            'completed'::character varying
+            'Running'::character varying,
+            'Enrolling'::character varying,
+            'Completed'::character varying,
+            'Declined'::character varying,
+            'Proposed'::character varying,
+            'Canceled'::character varying
           ]
         )::text[]
       )
