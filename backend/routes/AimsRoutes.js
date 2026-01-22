@@ -35,12 +35,6 @@ import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
 const router = express.Router();
 
-// Preflight handler for all routes (ensures credentials are sent properly)
-router.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
-
 // Help endpoint
 router.get('/help', getHelp);
 
