@@ -4,7 +4,6 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "build": "npm install && cd ../frontend && npm install --include=dev && npm run build",
     "start": "node server.js"
   },
   "keywords": [],

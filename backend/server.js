@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import session from "express-session";
+import pgSession from "connect-pg-simple";
+import { Pool } from "pg";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
@@ -65,6 +67,27 @@ const isProduction = process.env.NODE_ENV === "production";
 
 console.log("[SESSION] Mode:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
 
+// Setup PostgreSQL session store
+let sessionStore;
+if (isProduction && process.env.DATABASE_URL) {
+  // Production: Use PostgreSQL session store
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false } // Required for Render PostgreSQL
+  });
+  
+  const PgSession = pgSession(session);
+  sessionStore = new PgSession({
+    pool,
+    tableName: "session"
+  });
+  
+  console.log("[SESSION] Using PostgreSQL session store");
+} else {
+  // Development: Use memory store (acceptable for local dev)
+  console.log("[SESSION] Using memory store (development only)");
+}
+
 const sessionConfig = {
   name: "aims.sid",
   secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
@@ -79,6 +102,11 @@ const sessionConfig = {
     path: "/"
   }
 };
+
+// Add session store if available
+if (sessionStore) {
+  sessionConfig.store = sessionStore;
+}
 
 // Add domain only in production
 if (isProduction && process.env.BACKEND_URL) {
@@ -97,63 +125,36 @@ console.log("[SESSION] Cookie config:", {
 
 app.use(session(sessionConfig));
 
-/* -----------------------------
-   DEBUG (OPTIONAL)
------------------------------- */
-app.use((req, res, next) => {
-  console.log(
-    "[SESSION]",
-    "id:",
-    req.sessionID,
-    "exists:",
-    !!req.session
-  );
-  next();
-});
-
-/* -----------------------------
-   ROUTES (UNCHANGED)
------------------------------- */
+/* ========================================
+   ROUTES ONLY (Frontend is deployed separately)
+======================================== */
 app.use("/", AimsRoutes);
 
 /* ========================================
-   STATIC FILES & SPA FALLBACK
+   HEALTH CHECK
 ======================================== */
-// Serve static files from the frontend build directory
-const frontendBuildPath = path.join(__dirname, "../frontend/dist");
-
-console.log("[STARTUP] Frontend build path:", frontendBuildPath);
-console.log("[STARTUP] Frontend dist exists:", fs.existsSync(frontendBuildPath));
-
-app.use(express.static(frontendBuildPath));
-
-// SPA Fallback: Route all non-API requests to index.html
-// This must come AFTER app.use("/", AimsRoutes) so API routes take precedence
-app.use((req, res) => {
-  // Don't serve index.html for API-like paths that failed
-  if (req.path.startsWith("/api") || req.path.startsWith("/help") || req.path.startsWith("/check-user")) {
-    return res.status(404).json({ error: "Not found" });
-  }
-  
-  console.log("[SPA] Serving index.html for:", req.path);
-  const indexPath = path.join(frontendBuildPath, "index.html");
-  
-  if (!fs.existsSync(indexPath)) {
-    console.error("[SPA] index.html not found at:", indexPath);
-    return res.status(404).send("Frontend build not found");
-  }
-  
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error("[SPA] Error serving index.html:", err);
-      res.status(404).send("Not Found");
-    }
-  });
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-/* -----------------------------
-   SERVER
------------------------------- */
+/* ========================================
+   ERROR HANDLER
+======================================== */
+app.use((err, req, res, next) => {
+  console.error("[ERROR]", err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+/* ========================================
+   404 HANDLER
+======================================== */
+app.use((req, res) => {
+  res.status(404).json({ error: "API endpoint not found" });
+});
+
+/* ========================================
+   SERVER START
+======================================== */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
