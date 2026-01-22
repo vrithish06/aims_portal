@@ -89,11 +89,7 @@ function LoginPage({ insideModal = false }) {
       {/* RIGHT SIDE */}
       <div className="w-full md:w-1/2 bg-white text-black px-6 py-10 md:p-16 flex flex-col justify-center">
         
-        {!backendConnected && (
-          <div className="bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded mb-6 text-sm">
-            ⚠️ Backend not connected. Check server is running on port 3000
-          </div>
-        )}
+        
 
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
@@ -123,7 +119,7 @@ function LoginPage({ insideModal = false }) {
           <button
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-full transition-colors"
-            disabled={loading || !backendConnected}
+            
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
