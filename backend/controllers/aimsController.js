@@ -1415,7 +1415,7 @@ export const getPendingInstructorEnrollments = async (req, res) => {
     // PART 2: Get enrollments pending advisor approval where this instructor is the advisor for that batch
     const { data: advisorAssignments, error: advisorError } = await supabase
       .from("faculty_advisor")
-      .select("degree, batch")
+      .select("for_degree, batch")
       .eq('instructor_id', instructorData.instructor_id);
 
     if (advisorError) throw advisorError;
@@ -1464,7 +1464,7 @@ export const getPendingInstructorEnrollments = async (req, res) => {
 
         // Filter for students from this batch
         const advisorPendingsForBatch = (advisorPendings || []).filter(
-          e => e.student?.degree === assignment.degree && e.student?.batch === assignment.batch
+          e => e.student?.degree === assignment.for_degree && e.student?.batch === assignment.batch
         );
 
         enrollments = [...enrollments, ...advisorPendingsForBatch];
