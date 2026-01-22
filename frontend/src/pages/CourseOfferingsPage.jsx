@@ -15,6 +15,7 @@ function CourseOfferingsPage() {
   const [selectedEnrollType, setSelectedEnrollType] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(null);
   const [tempFilters, setTempFilters] = useState({
     department: [],
     slot: [],
@@ -132,6 +133,34 @@ function CourseOfferingsPage() {
 
   const handleCourseClick = (offering) => {
     navigate(`/course/${offering.offering_id}`, { state: { offering } });
+  };
+
+  const handleOfferingStatusChange = async (offeringId, newStatus) => {
+    if (statusUpdating) return;
+    
+    try {
+      setStatusUpdating(offeringId);
+      const response = await axiosClient.put(`/offering/${offeringId}/status`, {
+        status: newStatus
+      });
+
+      if (response.data.success) {
+        toast.success(`Offering ${newStatus === 'Accepted' ? 'accepted' : 'rejected'} successfully!`);
+        // Update local state
+        setOfferings(offerings.map(off => 
+          off.offering_id === offeringId 
+            ? { ...off, status: newStatus === 'Accepted' ? 'Enrolling' : 'Rejected' }
+            : off
+        ));
+      } else {
+        toast.error(response.data.message || 'Failed to update offering status');
+      }
+    } catch (err) {
+      console.error('Error updating offering status:', err);
+      toast.error(err.response?.data?.message || 'Failed to update offering status');
+    } finally {
+      setStatusUpdating(null);
+    }
   };
 
   // Get unique filter options
@@ -452,19 +481,65 @@ function CourseOfferingsPage() {
                     </div>
 
                     {/* Show different button based on user role and enrollment status */}
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                      {/* ADMIN ACTIONS - Accept/Reject Proposed Courses */}
+                      {user?.role === 'admin' && offering.status === 'Proposed' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleOfferingStatusChange(offering.offering_id, 'Accepted')}
+                            disabled={statusUpdating === offering.offering_id}
+                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm font-medium disabled:opacity-50"
+                          >
+                            {statusUpdating === offering.offering_id ? 'Updating...' : 'Accept'}
+                          </button>
+                          <button
+                            onClick={() => handleOfferingStatusChange(offering.offering_id, 'Rejected')}
+                            disabled={statusUpdating === offering.offering_id}
+                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm font-medium disabled:opacity-50"
+                          >
+                            {statusUpdating === offering.offering_id ? 'Updating...' : 'Reject'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* STUDENT ACTIONS - Enrollment */}
                       {user?.role === 'student' ? (
                         (() => {
                           const enrolled = enrolledCourses.find(e => e.course_offering?.offering_id === offering.offering_id);
-                          return enrolled ? (
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded text-sm font-medium border border-green-300">
-                              ✓ Enrolled as {enrolled.enrol_type}
-                            </div>
-                          ) : (
+                          
+                          // If offering status is Cancelled, show cancelled badge
+                          if (offering.status === 'Cancelled') {
+                            return (
+                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded text-sm font-medium border border-red-300">
+                                ✗ Enrollment Cancelled
+                              </div>
+                            );
+                          }
+                          
+                          // If already enrolled, show enrolled status
+                          if (enrolled) {
+                            return (
+                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded text-sm font-medium border border-green-300">
+                                ✓ Enrolled as {enrolled.enrol_type}
+                              </div>
+                            );
+                          }
+                          
+                          // If status is NOT Enrolling, show disabled message
+                          if (offering.status !== 'Enrolling') {
+                            return (
+                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded text-sm font-medium border border-gray-300">
+                                Enrollment Not Available
+                              </div>
+                            );
+                          }
+                          
+                          // If status is Enrolling, show enrollment options
+                          return (
                             <>
                               <button
                                 onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
+                                className="w-full inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
                                 disabled={enrolling === offering.offering_id}
                               >
                                 {enrolling === offering.offering_id ? (
@@ -524,12 +599,15 @@ function CourseOfferingsPage() {
                           );
                         })()
                       ) : (
-                        <button
-                          onClick={() => handleCourseClick(offering)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm font-medium"
-                        >
-                          View Details
-                        </button>
+                        // For non-students (instructor/admin) who aren't taking any action, show View Details
+                        !user?.role === 'admin' || offering.status !== 'Proposed' ? (
+                          <button
+                            onClick={() => handleCourseClick(offering)}
+                            className="w-full inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm font-medium"
+                          >
+                            View Details
+                          </button>
+                        ) : null
                       )}
                     </div>
                   </div>

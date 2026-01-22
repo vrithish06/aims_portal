@@ -21,7 +21,13 @@ import {
   getEnrolledCourses,
   getCourseOfferings,
   getMyOfferings,
-  getOfferingEnrollments
+  getAllOfferings,
+  getOfferingEnrollments,
+  updateOfferingStatus,
+  updateEnrollmentStatus,
+  withdrawCourse,
+  dropCourse,
+  cancelCourseOffering
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -169,6 +175,9 @@ router.get('/course-offerings', getCourseOfferings);
 // My offerings - for instructors
 router.get('/offering/my-offerings', requireAuth, requireRole('instructor'), getMyOfferings);
 
+// All offerings - for admin to manage all courses
+router.get('/offering/all-offerings', requireAuth, requireRole('admin'), getAllOfferings);
+
 router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
 
 //create course
@@ -179,8 +188,21 @@ router.post('/instructor/course', requireAuth, requireRole('instructor'), create
 router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
 router.put('/offering/:offeringId/enroll', requireAuth, updateEnrollment);
 
+// Student withdrawal and drop endpoints
+router.post('/offering/:offeringId/withdraw', requireAuth, withdrawCourse);
+router.post('/offering/:offeringId/drop', requireAuth, dropCourse);
+
+// Instructor/Admin update specific enrollment status for approvals
+router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updateEnrollmentStatus);
+
 // Instructor creates offerings for their courses
 router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
+
+// Instructor/Admin updates offering status (accept/reject proposed offerings)
+router.put('/offering/:offeringId/status', requireAuth, updateOfferingStatus);
+
+// Instructor cancels course offering (cascades to enrollments)
+router.post('/offering/:offeringId/cancel', requireAuth, requireRole('instructor'), cancelCourseOffering);
 
 // Admin endpoint to fix/hash passwords (use with caution!)
 router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), async (req, res) => {

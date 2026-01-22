@@ -782,6 +782,59 @@ export const getMyOfferings = async (req, res) => {
   }
 };
 
+// Get all offerings (for admin to manage courses)
+export const getAllOfferings = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("course_offering")
+      .select(`
+        *,
+        course:course_id (
+          code,
+          title,
+          ltp
+        ),
+        instructor:instructor_id (
+          instructor_id,
+          user_id,
+          users:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        ),
+        enrollments:course_enrollment(
+          enrollment_id,
+          student_id,
+          enrol_type,
+          enrol_status
+        )
+      `);
+
+    if (error) throw error;
+
+    // Add enrollment count to each offering
+    const enrichedData = data.map(offering => ({
+      ...offering,
+      _count: {
+        enrollments: offering.enrollments?.length || 0
+      }
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: enrichedData
+    });
+
+  } catch (err) {
+    console.error("getAllOfferings error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
 // Get enrollments for a specific offering
 export const getOfferingEnrollments = async (req, res) => {
   const { offeringId } = req.params;
@@ -848,29 +901,23 @@ export const getOfferingEnrollments = async (req, res) => {
       studentMap[student.student_id] = student;
     });
 
-    // Combine enrollment and student data
-    const transformedData = enrollmentData.map(enrollment => ({
-      enrollment_id: enrollment.enrollment_id,
-      student_id: enrollment.student_id,
-      offering_id: enrollment.offering_id,
-      enrol_type: enrollment.enrol_type,  // Explicitly include enrollment type
-      enrol_status: enrollment.enrol_status,
-      grade: enrollment.grade || 'N/A',
-      student_name: studentMap[enrollment.student_id]?.users ? 
-        `${studentMap[enrollment.student_id].users.first_name} ${studentMap[enrollment.student_id].users.last_name}` : 'N/A',
-      student_email: studentMap[enrollment.student_id]?.users?.email || 'N/A'
-    }));
-
-    console.log(`[ENROLLMENTS] Returning ${transformedData.length} enrollments for offering ${offeringId}`);
+    // Merge enrollment and student data
+    const enrollmentDataWithStudents = enrollmentData.map(enrollment => {
+      const student = studentMap[enrollment.student_id];
+      return {
+        ...enrollment,
+        student_name: student ? `${student.users.first_name} ${student.users.last_name}` : 'Unknown',
+        student_email: student ? student.users.email : 'Unknown'
+      };
+    });
 
     return res.status(200).json({
       success: true,
-      count: transformedData.length,
-      data: transformedData
+      count: enrollmentDataWithStudents.length,
+      data: enrollmentDataWithStudents
     });
-
   } catch (err) {
-    console.error("getOfferingEnrollments error:", err);
+    console.error("[ENROLLMENTS] Unexpected error:", err);
     return res.status(500).json({
       success: false,
       message: err.message
@@ -878,3 +925,295 @@ export const getOfferingEnrollments = async (req, res) => {
   }
 };
 
+// Update course offering status (for instructors to accept/reject proposed offerings and for admin to manage courses)
+export const updateOfferingStatus = async (req, res) => {
+  const { offeringId } = req.params;
+  const { status } = req.body;
+  const userId = req.user?.user_id;
+  const userRole = req.user?.role;
+
+  // Allowed transitions from Proposed
+  const validStatuses = ['Accepted', 'Rejected'];
+  const statusMap = {
+    'Accepted': 'Enrolling',
+    'Rejected': 'Rejected'
+  };
+
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid status. Allowed values: ${validStatuses.join(', ')}`
+    });
+  }
+
+  try {
+    // Verify that offering exists
+    const { data: offering, error: offeringError } = await supabase
+      .from("course_offering")
+      .select("*, instructor(*)")
+      .eq('offering_id', offeringId)
+      .single();
+
+    if (offeringError || !offering) {
+      return res.status(404).json({
+        success: false,
+        message: "Offering not found"
+      });
+    }
+
+    // Check authorization: instructor owns the offering OR user is admin
+    if (userRole !== 'admin') {
+      const { data: instructor, error: instructorError } = await supabase
+        .from("instructor")
+        .select("instructor_id")
+        .eq('user_id', userId)
+        .single();
+
+      if (instructorError || offering.instructor_id !== instructor.instructor_id) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only update your own offerings"
+        });
+      }
+    }
+
+    // Update offering status
+    const newStatus = statusMap[status];
+    const { data, error } = await supabase
+      .from("course_offering")
+      .update({ status: newStatus })
+      .eq('offering_id', offeringId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      message: `Offering status updated to ${newStatus}`,
+      data
+    });
+  } catch (err) {
+    console.error("updateOfferingStatus error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Update specific enrollment status (for teacher/admin to approve pending students)
+export const updateEnrollmentStatus = async (req, res) => {
+  const { offeringId, enrollmentId } = req.params;
+  const { enrol_status } = req.body;
+  const userId = req.user?.user_id;
+
+  try {
+    // Get the enrollment to verify it exists
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from("course_enrollment")
+      .select("*")
+      .eq('enrollment_id', enrollmentId)
+      .eq('offering_id', offeringId)
+      .single();
+
+    if (enrollmentError || !enrollment) {
+      return res.status(404).json({
+        success: false,
+        message: "Enrollment not found"
+      });
+    }
+
+    // For instructors: verify offering belongs to them
+    if (userId) {
+      const { data: instructor, error: instructorError } = await supabase
+        .from("instructor")
+        .select("instructor_id")
+        .eq('user_id', userId)
+        .single();
+
+      if (!instructorError && instructor) {
+        const { data: offering } = await supabase
+          .from("course_offering")
+          .select("instructor_id")
+          .eq('offering_id', offeringId)
+          .single();
+
+        if (offering && offering.instructor_id !== instructor.instructor_id) {
+          return res.status(403).json({
+            success: false,
+            message: "You can only update enrollments for your offerings"
+          });
+        }
+      }
+    }
+
+    // Update enrollment status (convert underscores to spaces for database compatibility)
+    const dbEnrolStatus = enrol_status.replace(/_/g, ' ');
+    const { data, error } = await supabase
+      .from("course_enrollment")
+      .update({ enrol_status: dbEnrolStatus })
+      .eq('enrollment_id', enrollmentId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      message: `Enrollment status updated to ${dbEnrolStatus}`,
+      data
+    });
+  } catch (err) {
+    console.error("updateEnrollmentStatus error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Withdraw from course
+export const withdrawCourse = async (req, res) => {
+  const { offeringId } = req.params;
+  const userId = req.user?.user_id;
+
+  try {
+    // Get student_id from session user_id
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', parseInt(userId))
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({ success: false, message: "Student record not found" });
+    }
+
+    // Find the enrollment
+    const { data: enrollment, error: enrollError } = await supabase
+      .from("course_enrollment")
+      .select("enrollment_id")
+      .eq('student_id', studentData.student_id)
+      .eq('offering_id', parseInt(offeringId))
+      .single();
+
+    if (enrollError || !enrollment) {
+      return res.status(404).json({ success: false, message: "Enrollment not found" });
+    }
+
+    // Update enrollment status to withdrawn
+    const { data, error } = await supabase
+      .from("course_enrollment")
+      .update({ enrol_status: 'withdrawn' })
+      .eq('enrollment_id', enrollment.enrollment_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: "Successfully withdrawn from course", data });
+  } catch (err) {
+    console.error("withdrawCourse error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Drop course
+export const dropCourse = async (req, res) => {
+  const { offeringId } = req.params;
+  const userId = req.user?.user_id;
+
+  try {
+    // Get student_id from session user_id
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', parseInt(userId))
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({ success: false, message: "Student record not found" });
+    }
+
+    // Find the enrollment
+    const { data: enrollment, error: enrollError } = await supabase
+      .from("course_enrollment")
+      .select("enrollment_id")
+      .eq('student_id', studentData.student_id)
+      .eq('offering_id', parseInt(offeringId))
+      .single();
+
+    if (enrollError || !enrollment) {
+      return res.status(404).json({ success: false, message: "Enrollment not found" });
+    }
+
+    // Update enrollment status to dropped
+    const { data, error } = await supabase
+      .from("course_enrollment")
+      .update({ enrol_status: 'dropped' })
+      .eq('enrollment_id', enrollment.enrollment_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: "Successfully dropped from course", data });
+  } catch (err) {
+    console.error("dropCourse error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Handle course offering cancellation and cascade to enrollments
+export const cancelCourseOffering = async (req, res) => {
+  const { offeringId } = req.params;
+  const userId = req.user?.user_id;
+
+  try {
+    // Verify instructor ownership
+    const { data: instructor } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', parseInt(userId))
+      .single();
+
+    if (!instructor) {
+      return res.status(403).json({ success: false, message: "Only instructors can cancel offerings" });
+    }
+
+    const { data: offering } = await supabase
+      .from("course_offering")
+      .select("*")
+      .eq('offering_id', parseInt(offeringId))
+      .single();
+
+    if (!offering) {
+      return res.status(404).json({ success: false, message: "Offering not found" });
+    }
+
+    if (offering.instructor_id !== instructor.instructor_id) {
+      return res.status(403).json({ success: false, message: "You do not own this offering" });
+    }
+
+    // Update offering status to Cancelled
+    const { error: updateOfferingError } = await supabase
+      .from("course_offering")
+      .update({ status: 'Cancelled' })
+      .eq('offering_id', parseInt(offeringId));
+
+    if (updateOfferingError) throw updateOfferingError;
+
+    // Cascade: Update all enrollments for this offering to Cancelled
+    const { error: updateEnrollmentsError } = await supabase
+      .from("course_enrollment")
+      .update({ enrol_status: 'cancelled' })
+      .eq('offering_id', parseInt(offeringId))
+      .in('enrol_status', ['enrolled', 'pending instructor approval']);
+
+    if (updateEnrollmentsError) throw updateEnrollmentsError;
+
+    return res.status(200).json({ success: true, message: "Course offering cancelled and all enrollments updated" });
+  } catch (err) {
+    console.error("cancelCourseOffering error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

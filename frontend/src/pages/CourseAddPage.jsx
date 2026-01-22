@@ -24,7 +24,7 @@ function CourseAddPage() {
     degree: "",
     dept_name: "",
     acad_session: "",
-    offering_status: "open",
+    offering_status: "Proposed",
     slot: "",
     section: "",
     is_coordinator: false,
@@ -217,35 +217,17 @@ function CourseAddPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-semibold">Status</span>
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
+              <div className="form-control">
+                <label className="label cursor-pointer">
+                  <span className="label-text font-semibold">Has Lab</span>
+                  <input
+                    type="checkbox"
+                    name="has_lab"
+                    checked={formData.has_lab}
                     onChange={handleChange}
-                    className="select select-bordered"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-
-                <div className="form-control">
-                  <label className="label cursor-pointer">
-                    <span className="label-text font-semibold">Has Lab</span>
-                    <input
-                      type="checkbox"
-                      name="has_lab"
-                      checked={formData.has_lab}
-                      onChange={handleChange}
-                      className="checkbox"
-                    />
-                  </label>
-                </div>
+                    className="checkbox"
+                  />
+                </label>
               </div>
 
               <div className="form-control">
@@ -347,24 +329,7 @@ function CourseAddPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-semibold">Offering Status</span>
-                  </label>
-                  <select
-                    name="offering_status"
-                    value={formData.offering_status}
-                    onChange={handleChange}
-                    className="select select-bordered"
-                  >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-
+              <div className="grid grid-cols-2 gap-4">
                 <div className="form-control">
                   <label className="label">
                     <span className="label-text font-semibold">Slot</span>

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import axiosClient from '../api/axiosClient';
-import { ChevronDown, Users, BookOpen, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { ChevronDown, Users, BookOpen, Clock, Check } from 'lucide-react';
 
 function MyOfferingsPage() {
   const user = useAuthStore((state) => state.user);
@@ -12,9 +13,10 @@ function MyOfferingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedOffering, setExpandedOffering] = useState(null);
+  const [statusUpdating, setStatusUpdating] = useState(null);
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'instructor') {
+    if (!isAuthenticated || (user?.role !== 'instructor' && user?.role !== 'admin')) {
       navigate('/');
       return;
     }
@@ -25,13 +27,47 @@ function MyOfferingsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosClient.get('/offering/my-offerings');
+      // Admin fetches all courses, instructor fetches their own
+      const endpoint = user?.role === 'admin' ? '/offering/all-offerings' : '/offering/my-offerings';
+      const response = await axiosClient.get(endpoint);
       setOfferings(response.data.data || []);
     } catch (err) {
       console.error('Error fetching offerings:', err);
       setError(err.response?.data?.message || 'Failed to load offerings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCourseClick = (offering) => {
+    navigate(`/course/${offering.offering_id}`, { state: { offering } });
+  };
+
+  const handleOfferingStatusChange = async (offeringId, newStatus) => {
+    if (statusUpdating) return;
+    
+    try {
+      setStatusUpdating(offeringId);
+      const response = await axiosClient.put(`/offering/${offeringId}/status`, {
+        status: newStatus
+      });
+
+      if (response.data.success) {
+        toast.success(`Offering ${newStatus === 'Accepted' ? 'accepted' : 'rejected'} successfully!`);
+        // Update local state
+        setOfferings(offerings.map(off => 
+          off.offering_id === offeringId 
+            ? { ...off, status: newStatus === 'Accepted' ? 'Enrolling' : 'Rejected' }
+            : off
+        ));
+      } else {
+        toast.error(response.data.message || 'Failed to update offering status');
+      }
+    } catch (err) {
+      console.error('Error updating offering status:', err);
+      toast.error(err.response?.data?.message || 'Failed to update offering status');
+    } finally {
+      setStatusUpdating(null);
     }
   };
 
@@ -45,11 +81,11 @@ function MyOfferingsPage() {
     );
   }
 
-  if (user?.role !== 'instructor') {
+  if (user?.role !== 'instructor' && user?.role !== 'admin') {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="alert alert-warning">
-          <span>Only instructors can view their offerings</span>
+          <span>Only instructors and admins can view this page</span>
         </div>
       </div>
     );
@@ -60,8 +96,12 @@ function MyOfferingsPage() {
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">My Course Offerings</h1>
-          <p className="text-gray-600">Manage and view your offered courses</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            {user?.role === 'admin' ? 'Manage All Course Offerings' : 'My Course Offerings'}
+          </h1>
+          <p className="text-gray-600">
+            {user?.role === 'admin' ? 'Manage and review all course offerings' : 'Manage and view your offered courses'}
+          </p>
         </div>
 
         {/* Loading State */}
@@ -92,12 +132,20 @@ function MyOfferingsPage() {
             {offerings.map((offering) => (
               <div
                 key={offering.offering_id}
-                className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden"
+                onClick={() => handleCourseClick(offering)}
+                className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden cursor-pointer"
               >
                 {/* Card Header */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                  <h3 className="text-xl font-bold mb-2">{offering.course?.title}</h3>
-                  <p className="text-blue-100 text-sm">{offering.course?.code}</p>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold mb-2">{offering.course?.title}</h3>
+                      <p className="text-blue-100 text-sm">{offering.course?.code}</p>
+                    </div>
+                    {offering.status === 'Running' && (
+                      <Check className="w-6 h-6 text-green-300" />
+                    )}
+                  </div>
                 </div>
 
                 {/* Card Body */}
@@ -106,7 +154,14 @@ function MyOfferingsPage() {
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center gap-3">
                       <span className="badge badge-primary">{offering.acad_session}</span>
-                      <span className="badge badge-outline">{offering.status}</span>
+                      <span className={`badge ${
+                        offering.status === 'Running' ? 'badge-success' :
+                        offering.status === 'Proposed' ? 'badge-warning' :
+                        offering.status === 'Cancelled' ? 'badge-error' :
+                        'badge-neutral'
+                      }`}>
+                        {offering.status}
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -129,13 +184,43 @@ function MyOfferingsPage() {
                     </div>
                   </div>
 
+                  {/* Proposed Offering Status Control - ONLY FOR ADMIN */}
+                  {offering.status === 'Proposed' && user?.role === 'admin' && (
+                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded space-y-3">
+                      <p className="text-sm font-semibold text-yellow-900">Review Proposed Offering</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOfferingStatusChange(offering.offering_id, 'Accepted');
+                          }}
+                          disabled={statusUpdating === offering.offering_id}
+                          className="flex-1 btn btn-sm btn-success text-white disabled:opacity-50"
+                        >
+                          {statusUpdating === offering.offering_id ? 'Updating...' : 'Accept'}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOfferingStatusChange(offering.offering_id, 'Rejected');
+                          }}
+                          disabled={statusUpdating === offering.offering_id}
+                          className="flex-1 btn btn-sm btn-error text-white disabled:opacity-50"
+                        >
+                          {statusUpdating === offering.offering_id ? 'Updating...' : 'Reject'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Expandable Stats */}
                   <button
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setExpandedOffering(
                         expandedOffering === offering.offering_id ? null : offering.offering_id
-                      )
-                    }
+                      );
+                    }}
                     className="w-full flex items-center justify-between p-3 bg-gray-100 hover:bg-gray-200 rounded transition text-gray-700 font-medium"
                   >
                     <div className="flex items-center gap-2">
