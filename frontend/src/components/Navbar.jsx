@@ -76,12 +76,19 @@ function Navbar() {
 
             {user?.role === "instructor" && (
               <>
-                <Link
-                  to="/my-offerings"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
-                  My Offerings
-                </Link>
+                <div className="dropdown dropdown-hover">
+                  <button className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base">
+                    My Work
+                  </button>
+                  <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                    <li>
+                      <Link to="/my-offerings">My Offerings</Link>
+                    </li>
+                    <li>
+                      <Link to="/action-pending">Action Pending</Link>
+                    </li>
+                  </ul>
+                </div>
 
                 <Link
                   to="/course-offerings"
@@ -183,6 +190,12 @@ function Navbar() {
                         <Link to="/my-offerings">My Offerings</Link>
                       </li>
                       <li>
+                        <Link to="/action-pending">Action Pending</Link>
+                      </li>
+                      <li>
+                        <Link to="/advisor-actions">Advisor Actions</Link>
+                      </li>
+                      <li>
                         <Link to="/course-offerings">Browse Courses</Link>
                       </li>
                       <li>
@@ -262,6 +275,22 @@ function Navbar() {
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
                 My Offerings
+              </Link>
+
+              <Link
+                to="/action-pending"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                Action Pending
+              </Link>
+
+              <Link
+                to="/advisor-actions"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                Advisor Actions
               </Link>
 
               <Link
