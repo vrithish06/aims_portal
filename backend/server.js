@@ -124,8 +124,15 @@ app.use(express.static(frontendBuildPath));
 
 // SPA Fallback: Route all non-API requests to index.html
 // This must come AFTER app.use("/", AimsRoutes) so API routes take precedence
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(frontendBuildPath, "index.html"));
+app.use((req, res) => {
+  // Log for debugging
+  console.log("[SPA] Serving index.html for:", req.path);
+  res.sendFile(path.join(frontendBuildPath, "index.html"), (err) => {
+    if (err) {
+      console.error("[SPA] Error serving index.html:", err);
+      res.status(404).send("Not Found");
+    }
+  });
 });
 
 /* -----------------------------
