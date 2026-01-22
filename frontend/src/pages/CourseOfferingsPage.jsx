@@ -476,7 +476,7 @@ function CourseOfferingsPage() {
                       </p>
 
                       <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">INSTRUCTOR(S)</span> <span className="text-gray-700 font-medium">{instructor ? `Instructor #${instructor.instructor_id}` : 'N/A'}</span>.
+                        <span className="font-bold text-gray-900">INSTRUCTOR(S)</span> <span className="text-gray-700 font-medium">{instructor && instructor.users ? `${instructor.users.first_name} ${instructor.users.last_name}` : instructor ? `Instructor #${instructor.instructor_id}` : 'N/A'}</span>.
                       </p>
                     </div>
 

@@ -27,7 +27,9 @@ import {
   updateEnrollmentStatus,
   withdrawCourse,
   dropCourse,
-  cancelCourseOffering
+  cancelCourseOffering,
+  getPendingInstructorEnrollments,
+  getPendingAdvisorEnrollments
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -179,6 +181,9 @@ router.get('/offering/my-offerings', requireAuth, requireRole('instructor'), get
 router.get('/offering/all-offerings', requireAuth, requireRole('admin'), getAllOfferings);
 
 router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
+
+router.get('/enrollment/pending-instructor', requireAuth, getPendingInstructorEnrollments);
+router.get('/enrollment/pending-advisor', requireAuth, getPendingAdvisorEnrollments);
 
 //create course
 // Instructor creates a course (uses session identity)

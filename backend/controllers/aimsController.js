@@ -1217,3 +1217,284 @@ export const cancelCourseOffering = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// Get pending enrollments for advisor (pending advisor approval for their batch/degree)
+export const getPendingAdvisorEnrollments = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    // First, get the instructor (advisor) record for this user
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
+    // Get faculty advisor record to find the batch and degree this advisor manages
+    const { data: advisorData, error: advisorError } = await supabase
+      .from("faculty_advisor")
+      .select("for_degree, batch")
+      .eq('instructor_id', instructorData.instructor_id)
+      .single();
+
+    if (advisorError || !advisorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty advisor record not found. You are not assigned as an advisor."
+      });
+    }
+
+    const { for_degree, batch } = advisorData;
+
+    // Get all course offerings for the degree this advisor manages
+    const { data: offerings, error: offeringsError } = await supabase
+      .from("course_offering")
+      .select("offering_id")
+      .eq('degree', for_degree)
+      .eq('acad_session', batch); // batch is the academic session
+
+    if (offeringsError) throw offeringsError;
+
+    const offeringIds = offerings.map(o => o.offering_id);
+
+    if (offeringIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
+    // Get enrollments with pending advisor approval for students in this batch/degree
+    const { data: enrollments, error: enrollmentsError } = await supabase
+      .from("course_enrollment")
+      .select(`
+        enrollment_id,
+        student_id,
+        offering_id,
+        enrol_type,
+        enrol_status,
+        grade,
+        course_offering:offering_id (
+          offering_id,
+          acad_session,
+          slot,
+          section,
+          status,
+          course:course_id (
+            course_id,
+            code,
+            title,
+            ltp
+          )
+        ),
+        student:student_id (
+          student_id,
+          user_id,
+          branch,
+          degree,
+          users:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
+      .in('offering_id', offeringIds)
+      .eq('enrol_status', 'pending advisor approval')
+      .eq('is_deleted', false);
+
+    if (enrollmentsError) throw enrollmentsError;
+
+    // Flatten the response
+    const flattenedEnrollments = (enrollments || []).map(enrollment => ({
+      ...enrollment,
+      offering: enrollment.course_offering,
+      course: enrollment.course_offering?.course
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: flattenedEnrollments,
+      advisorInfo: {
+        degree: for_degree,
+        batch: batch
+      }
+    });
+
+  } catch (err) {
+    console.error("getPendingAdvisorEnrollments error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get pending enrollments for instructor (pending instructor approval + pending advisor approval)
+export const getPendingInstructorEnrollments = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    // First, get the instructor record for this user
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
+    // PART 1: Get enrollments pending instructor approval from courses this instructor teaches
+    const { data: offerings, error: offeringsError } = await supabase
+      .from("course_offering")
+      .select("offering_id")
+      .eq('instructor_id', instructorData.instructor_id);
+
+    if (offeringsError) throw offeringsError;
+
+    const offeringIds = offerings.map(o => o.offering_id);
+
+    let enrollments = [];
+
+    // Get pending instructor approvals
+    if (offeringIds.length > 0) {
+      const { data: instructorApprovals, error: approvalError } = await supabase
+        .from("course_enrollment")
+        .select(`
+          enrollment_id,
+          student_id,
+          offering_id,
+          enrol_type,
+          enrol_status,
+          grade,
+          course_offering:offering_id (
+            offering_id,
+            acad_session,
+            slot,
+            section,
+            status,
+            course:course_id (
+              course_id,
+              code,
+              title,
+              ltp
+            )
+          ),
+          student:student_id (
+            student_id,
+            user_id,
+            branch,
+            degree,
+            users:user_id (
+              first_name,
+              last_name,
+              email
+            )
+          )
+        `)
+        .in('offering_id', offeringIds)
+        .eq('enrol_status', 'pending instructor approval')
+        .eq('is_deleted', false);
+
+      if (approvalError) throw approvalError;
+      enrollments = [...enrollments, ...(instructorApprovals || [])];
+    }
+
+    // PART 2: Get enrollments pending advisor approval where this instructor is the advisor for that batch
+    const { data: advisorAssignments, error: advisorError } = await supabase
+      .from("faculty_advisor")
+      .select("degree, batch")
+      .eq('instructor_id', instructorData.instructor_id);
+
+    if (advisorError) throw advisorError;
+
+    // For each degree/batch combination, find students and their pending advisor approvals
+    if (advisorAssignments && advisorAssignments.length > 0) {
+      for (const assignment of advisorAssignments) {
+        const { data: advisorPendings, error: pendingError } = await supabase
+          .from("course_enrollment")
+          .select(`
+            enrollment_id,
+            student_id,
+            offering_id,
+            enrol_type,
+            enrol_status,
+            grade,
+            course_offering:offering_id (
+              offering_id,
+              acad_session,
+              slot,
+              section,
+              status,
+              course:course_id (
+                course_id,
+                code,
+                title,
+                ltp
+              )
+            ),
+            student:student_id (
+              student_id,
+              user_id,
+              branch,
+              degree,
+              users:user_id (
+                first_name,
+                last_name,
+                email
+              )
+            )
+          `)
+          .eq('enrol_status', 'pending advisor approval')
+          .eq('is_deleted', false);
+
+        if (pendingError) throw pendingError;
+
+        // Filter for students from this batch
+        const advisorPendingsForBatch = (advisorPendings || []).filter(
+          e => e.student?.degree === assignment.degree && e.student?.batch === assignment.batch
+        );
+
+        enrollments = [...enrollments, ...advisorPendingsForBatch];
+      }
+    }
+
+    // Remove duplicates based on enrollment_id
+    const uniqueEnrollments = Array.from(
+      new Map(enrollments.map(e => [e.enrollment_id, e])).values()
+    );
+
+    // Flatten the response
+    const flattenedEnrollments = uniqueEnrollments.map(enrollment => ({
+      ...enrollment,
+      offering: enrollment.course_offering,
+      course: enrollment.course_offering?.course
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: flattenedEnrollments
+    });
+
+  } catch (err) {
+    console.error("getPendingInstructorEnrollments error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+

@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
-import { Users, ArrowLeft, BookOpen, ChevronDown, Check } from 'lucide-react';
+import { Users, ArrowLeft, BookOpen, ChevronDown, Check, X } from 'lucide-react';
 
 function CourseDetailsPage() {
   const { offeringId } = useParams();
@@ -130,6 +130,26 @@ function CourseDetailsPage() {
     } catch (error) {
       toast.error('Failed to approve student');
       console.error('Approval error:', error);
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const handleRejectStudent = async (enrollment) => {
+    try {
+      setApproving(enrollment.enrollment_id);
+      const response = await axiosClient.put(
+        `/offering/${offeringId}/enrollments/${enrollment.enrollment_id}`,
+        { enrol_status: 'instructor rejected' }
+      );
+
+      if (response.data.success) {
+        toast.success('Student enrollment rejected.');
+        fetchEnrolledStudents();
+      }
+    } catch (error) {
+      toast.error('Failed to reject student');
+      console.error('Rejection error:', error);
     } finally {
       setApproving(null);
     }
@@ -415,13 +435,22 @@ function CourseDetailsPage() {
                               {isTeacherOrAdmin && (
                                 <td className="px-6 py-4 text-sm">
                                   {enrollment.enrol_status === 'pending instructor approval' && (
-                                    <button
-                                      onClick={() => handleApproveStudent(enrollment)}
-                                      disabled={approving === enrollment.enrollment_id}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition disabled:opacity-50"
-                                    >
-                                      {approving === enrollment.enrollment_id ? 'Approving...' : 'Approve'}
-                                    </button>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleApproveStudent(enrollment)}
+                                        disabled={approving === enrollment.enrollment_id}
+                                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition disabled:opacity-50"
+                                      >
+                                        {approving === enrollment.enrollment_id ? 'Approving...' : 'Approve'}
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectStudent(enrollment)}
+                                        disabled={approving === enrollment.enrollment_id}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition disabled:opacity-50"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
                                   )}
                                 </td>
                               )}
