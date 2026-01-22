@@ -4,10 +4,14 @@ import helmet from "helmet";
 import morgan from "morgan";
 import session from "express-session";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import AimsRoutes from "./routes/AimsRoutes.js";
 
 dotenv.config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /* ========================================
    ENVIRONMENT CONFIGURATION
@@ -110,6 +114,19 @@ app.use((req, res, next) => {
    ROUTES (UNCHANGED)
 ------------------------------ */
 app.use("/", AimsRoutes);
+
+/* ========================================
+   STATIC FILES & SPA FALLBACK
+======================================== */
+// Serve static files from the frontend build directory
+const frontendBuildPath = path.join(__dirname, "../frontend/dist");
+app.use(express.static(frontendBuildPath));
+
+// SPA Fallback: Route all non-API requests to index.html
+// This must come AFTER app.use("/", AimsRoutes) so API routes take precedence
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendBuildPath, "index.html"));
+});
 
 /* -----------------------------
    SERVER
