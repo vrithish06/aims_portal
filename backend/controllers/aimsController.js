@@ -515,137 +515,107 @@ export const updateEnrollment = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  console.log('[LOGIN] Request cookies:', req.headers.cookie || 'none');
-  console.log('[LOGIN] req.session exists at handler start:', !!req.session, 'sessionID:', req.sessionID || 'none');
-
-  console.log(`[LOGIN] Attempting login for email: ${email}`);
+  console.log("[LOGIN] Incoming cookies:", req.headers.cookie || "none");
+  console.log(
+    "[LOGIN] Session exists:",
+    !!req.session,
+    "SessionID:",
+    req.sessionID
+  );
 
   if (!email || !password) {
-    console.log("[LOGIN] Missing email or password");
     return res.status(400).json({
       success: false,
-      message: "email and password are required"
+      message: "Email and password are required",
     });
   }
 
   try {
-    console.log(`[LOGIN] Querying database for email: ${email}`);
-    
-    const { data, error } = await supabase
+    /* -----------------------------
+       1️⃣ Fetch user from DB
+    ------------------------------ */
+    const { data: user, error } = await supabase
       .from("users")
       .select("*")
-      .eq('email', email)
+      .eq("email", email)
       .single();
 
-    console.log(`[LOGIN] Database query result:`, { exists: !!data, error });
-
-    if (error) {
-      console.log(`[LOGIN] Database error: ${error.message}`);
+    if (error || !user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
-    if (!data) {
-      console.log(`[LOGIN] User not found with email: ${email}`);
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password"
-      });
-    }
-
-    console.log(`[LOGIN] User found. Password hash exists: ${!!data.password_hashed}`);
-    
-    // Verify password
-    let isPasswordValid = false;
-    try {
-      isPasswordValid = await bcrypt.compare(password, data.password_hashed);
-      console.log(`[LOGIN] Password comparison result: ${isPasswordValid}`);
-    } catch (bcryptErr) {
-      console.log(`[LOGIN] Bcrypt error: ${bcryptErr.message}`);
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password"
-      });
-    }
+    /* -----------------------------
+       2️⃣ Verify password
+    ------------------------------ */
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password_hashed
+    );
 
     if (!isPasswordValid) {
-      console.log(`[LOGIN] Password invalid for email: ${email}`);
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
-    console.log(`[LOGIN] Login successful for email: ${email}`);
-
-    // Ensure session middleware is available
-    if (!req.session) {
-      console.error('[LOGIN] req.session is undefined; session middleware may not be attached');
-      return res.status(500).json({
-        success: false,
-        message: 'Server session middleware not available. Check server configuration.'
-      });
-    }
-
-    // Create session
+    /* -----------------------------
+       3️⃣ CREATE SESSION (CRITICAL)
+    ------------------------------ */
     req.session.user = {
-      user_id: data.id,
-      email: data.email,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      role: data.role
+      user_id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: user.role,
     };
 
-    console.log(`[LOGIN] Session created for user: ${data.email}`);
-
-    // Persist session to the database (sessions table)
-    try {
-      const sid = req.sessionID;
-      // Make a plain JSON-safe copy of the session
-      const sessObj = JSON.parse(JSON.stringify(req.session));
-      const expire = new Date(Date.now() + (req.session.cookie?.maxAge || 24 * 60 * 60 * 1000));
-
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('sessions')
-        .upsert([
-          {
-            sid: sid,
-            sess: sessObj,
-            expire: expire
-          }
-        ]);
-
-      if (sessionError) {
-        console.error('[LOGIN] Error saving session to DB:', sessionError);
-      } else {
-        console.log('[LOGIN] Session saved to DB for sid:', sid);
+    /* -----------------------------
+       4️⃣ FORCE SESSION SAVE
+       (guarantees Set-Cookie)
+    ------------------------------ */
+    req.session.save((err) => {
+      if (err) {
+        console.error("[LOGIN] Session save error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Session creation failed",
+        });
       }
-    } catch (saveErr) {
-      console.error('[LOGIN] Unexpected error saving session to DB:', saveErr);
-    }
 
-    return res.status(200).json({
-      success: true,
-      message: "Login successful",
-      data: {
-        user_id: data.id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: data.role
-      }
+      console.log(
+        "[LOGIN] Session saved successfully. SID:",
+        req.sessionID
+      );
+      console.log(
+        "[LOGIN] Cookie config:",
+        JSON.stringify(req.sessionID, null, 2)
+      );
+      console.log(
+        "[LOGIN] Set-Cookie header will be sent by express-session"
+      );
+
+      /* -----------------------------
+         5️⃣ Respond AFTER save
+      ------------------------------ */
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: req.session.user,
+      });
     });
-
   } catch (err) {
-    console.error(`[LOGIN] Unexpected error:`, err);
+    console.error("[LOGIN] Unexpected error:", err);
     return res.status(500).json({
       success: false,
-      message: err.message
+      message: "Internal server error",
     });
   }
 };
+
 
 // Get enrolled courses for a student
 export const getEnrolledCourses = async (req, res) => {

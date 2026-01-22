@@ -1,84 +1,56 @@
-import React, { useState, useEffect } from 'react'
-import useAuthStore from '../store/authStore'
-import toast from 'react-hot-toast'
+import React, { useState } from "react";
+import useAuthStore from "../store/authStore";
+import toast from "react-hot-toast";
 
 function LoginPage({ insideModal = false }) {
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+    email: "",
+    password: "",
+  });
 
-  const [loading, setLoading] = useState(false)
-  const [backendConnected, setBackendConnected] = useState(false)
+  const [loading, setLoading] = useState(false);
 
-  const login = useAuthStore((state) => state.login)
-
-  // Test backend connection on mount
-  useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/test')
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
-            setBackendConnected(true)
-            console.log('✓ Backend connected')
-            return
-          }
-        }
-
-        setBackendConnected(false)
-      } catch (error) {
-        console.error('Backend connection failed:', error)
-        toast.error("Cannot connect to backend. Make sure it's running on http://localhost:3000")
-        setBackendConnected(false)
-      }
-    }
-
-    testConnection()
-  }, [])
+  const login = useAuthStore((state) => state.login);
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-  }
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    if (!backendConnected) {
-      toast.error('Backend is not connected. Please start the backend server.')
-      return
-    }
+    e.preventDefault();
 
     if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields')
-      return
+      toast.error("Please fill in all fields");
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
-      console.log('Attempting login with email:', formData.email)
+      const result = await login(formData.email, formData.password);
 
-      const result = await login(formData.email, formData.password)
-
-      if (result.success) {
-        toast.success('Login successful!')
+      if (result?.success) {
+        toast.success("Login successful!");
       } else {
-        toast.error(result.message || 'Login failed')
+        toast.error(result?.message || "Invalid credentials");
       }
     } catch (error) {
-      console.error('Login error:', error)
-      toast.error('An unexpected error occurred')
+      console.error("Login failed:", error);
+
+      // Network / backend unreachable
+      if (!error.response) {
+        toast.error("Backend not reachable. Please try again later.");
+      } else {
+        toast.error("Login failed. Please try again.");
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
   <div
@@ -163,4 +135,4 @@ function LoginPage({ insideModal = false }) {
 
 }
 
-export default LoginPage
+export default LoginPage;
