@@ -5,6 +5,7 @@ import morgan from "morgan";
 import session from "express-session";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 import AimsRoutes from "./routes/AimsRoutes.js";
@@ -120,14 +121,29 @@ app.use("/", AimsRoutes);
 ======================================== */
 // Serve static files from the frontend build directory
 const frontendBuildPath = path.join(__dirname, "../frontend/dist");
+
+console.log("[STARTUP] Frontend build path:", frontendBuildPath);
+console.log("[STARTUP] Frontend dist exists:", fs.existsSync(frontendBuildPath));
+
 app.use(express.static(frontendBuildPath));
 
 // SPA Fallback: Route all non-API requests to index.html
 // This must come AFTER app.use("/", AimsRoutes) so API routes take precedence
 app.use((req, res) => {
-  // Log for debugging
+  // Don't serve index.html for API-like paths that failed
+  if (req.path.startsWith("/api") || req.path.startsWith("/help") || req.path.startsWith("/check-user")) {
+    return res.status(404).json({ error: "Not found" });
+  }
+  
   console.log("[SPA] Serving index.html for:", req.path);
-  res.sendFile(path.join(frontendBuildPath, "index.html"), (err) => {
+  const indexPath = path.join(frontendBuildPath, "index.html");
+  
+  if (!fs.existsSync(indexPath)) {
+    console.error("[SPA] index.html not found at:", indexPath);
+    return res.status(404).send("Frontend build not found");
+  }
+  
+  res.sendFile(indexPath, (err) => {
     if (err) {
       console.error("[SPA] Error serving index.html:", err);
       res.status(404).send("Not Found");
