@@ -261,8 +261,10 @@ function EnrolledCoursesPage() {
                         <span className="font-bold text-gray-900">STATUS</span> 
                         <span className={`ml-1 font-bold px-2 py-0.5 rounded ${
                           enrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' : 
-                          enrollment.enrol_status === 'completed' ? 'text-blue-600 bg-blue-100' : 
-                          'text-yellow-600 bg-yellow-100'
+                          enrollment.enrol_status === 'completed' ? 'text-blue-600 bg-blue-100' :
+                          enrollment.enrol_status === 'pending instructor approval' ? 'text-yellow-600 bg-yellow-100' :
+                          enrollment.enrol_status === 'pending advisor approval' ? 'text-orange-600 bg-orange-100' :
+                          'text-gray-600 bg-gray-100'
                         }`}>
                           {enrollment.enrol_status ? enrollment.enrol_status.charAt(0).toUpperCase() + enrollment.enrol_status.slice(1) : 'Pending'}
                         </span>

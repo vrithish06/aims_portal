@@ -101,7 +101,7 @@ function CourseOfferingsPage() {
         `/offering/${offeringId}/enroll`,
         {
           enrol_type: enrollType,
-          enrol_status: 'enrolled'
+          enrol_status: 'pending instructor approval'
         }
       );
 
@@ -536,7 +536,7 @@ function CourseOfferingsPage() {
                           
                           // If status is Enrolling, show enrollment options
                           return (
-                            <>
+                            <div className="relative w-full">
                               <button
                                 onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
                                 className="w-full inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
@@ -550,13 +550,13 @@ function CourseOfferingsPage() {
                                 ) : (
                                   <>
                                     {selectedEnrollType[offering.offering_id] ? selectedEnrollType[offering.offering_id] : 'Enroll'}
-                                    <ChevronDown className="w-4 h-4" />
+                                    <ChevronDown className="w-4 h-4 ml-auto" />
                                   </>
                                 )}
                               </button>
                               
                               {openDropdown === offering.offering_id && (
-                                <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 rounded shadow-lg z-50">
+                                <div className="absolute top-full left-0 right-0 mt-2 w-full bg-white border border-gray-300 rounded shadow-lg z-50">
                                   <button
                                     onClick={() => {
                                       handleEnroll(offering.offering_id, 'Credit');
@@ -595,7 +595,7 @@ function CourseOfferingsPage() {
                                   </button>
                                 </div>
                               )}
-                            </>
+                            </div>
                           );
                         })()
                       ) : (
