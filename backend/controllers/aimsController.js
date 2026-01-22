@@ -713,6 +713,7 @@ export const getEnrolledCourses = async (req, res) => {
 //  Get all course offerings
 export const getCourseOfferings = async (req, res) => {
   try {
+    console.log('[getCourseOfferings] Fetching course offerings...');
     const { data, error } = await supabase
       .from("course_offering")
       .select(`
@@ -723,14 +724,17 @@ export const getCourseOfferings = async (req, res) => {
           ltp
         ),
         instructor:instructor_id (
-          users:user_id (
-            first_name,
-            last_name
-          )
+          instructor_id,
+          user_id
         )
       `);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[getCourseOfferings] Error:', error);
+      throw error;
+    }
+
+    console.log('[getCourseOfferings] Success! Found', data?.length || 0, 'offerings');
 
     return res.status(200).json({
       success: true,
@@ -738,7 +742,69 @@ export const getCourseOfferings = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("getCourseOfferings error:", err);
+    console.error("getCourseOfferings error:", err.message || err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Unknown error'
+    });
+  }
+};
+
+// Get my offerings (for instructors)
+export const getMyOfferings = async (req, res) => {
+  const user_id = req.user?.user_id;
+
+  try {
+    // First, get the instructor record for this user
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', user_id)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
+    // Now get the course offerings for this instructor
+    const { data, error } = await supabase
+      .from("course_offering")
+      .select(`
+        *,
+        course:course_id (
+          code,
+          title,
+          ltp
+        ),
+        enrollments:course_enrollment(
+          enrollment_id,
+          student_id,
+          enrol_type,
+          enrol_status
+        )
+      `)
+      .eq('instructor_id', instructorData.instructor_id);
+
+    if (error) throw error;
+
+    // Add enrollment count to each offering
+    const enrichedData = data.map(offering => ({
+      ...offering,
+      _count: {
+        enrollments: offering.enrollments?.length || 0
+      }
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: enrichedData
+    });
+
+  } catch (err) {
+    console.error("getMyOfferings error:", err);
     return res.status(500).json({
       success: false,
       message: err.message

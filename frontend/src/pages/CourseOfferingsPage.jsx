@@ -7,6 +7,7 @@ import { Zap, ChevronDown, Search, X, ListFilter } from 'lucide-react';
 
 function CourseOfferingsPage() {
   const [offerings, setOfferings] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [enrolling, setEnrolling] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enrollmentStats, setEnrollmentStats] = useState({});
@@ -31,7 +32,10 @@ function CourseOfferingsPage() {
 
   useEffect(() => {
     fetchCourseOfferings();
-  }, []);
+    if (user?.role === 'student') {
+      fetchEnrolledCourses();
+    }
+  }, [user]);
 
   const fetchCourseOfferings = async () => {
     try {
@@ -73,6 +77,17 @@ function CourseOfferingsPage() {
     }
   };
 
+  const fetchEnrolledCourses = async () => {
+    try {
+      const response = await axiosClient.get('/student/enrolled-courses');
+      if (response.data.success) {
+        setEnrolledCourses(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch enrolled courses:', error);
+    }
+  };
+
   const handleEnroll = async (offeringId, enrollType = 'Credit') => {
     if (!user?.user_id) {
       toast.error('Please login first');
@@ -95,6 +110,9 @@ function CourseOfferingsPage() {
         setTimeout(async () => {
           await fetchEnrollmentStats(offeringId);
           await fetchCourseOfferings();
+          if (user?.role === 'student') {
+            await fetchEnrolledCourses();
+          }
           setOpenDropdown(null);
         }, 300);
       } else {
@@ -379,7 +397,7 @@ function CourseOfferingsPage() {
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
               {filteredOfferings.map((offering) => {
                 const course = offering.course;
-                const instructor = offering.instructor?.users;
+                const instructor = offering.instructor;
                 const enrollmentCount = enrollmentStats[offering.offering_id] || 0;
                 
                 return (
@@ -429,69 +447,89 @@ function CourseOfferingsPage() {
                       </p>
 
                       <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">INSTRUCTOR(S)</span> <span className="text-gray-700 font-medium">{instructor ? `${instructor.first_name} ${instructor.last_name}` : 'N/A'}</span>.
+                        <span className="font-bold text-gray-900">INSTRUCTOR(S)</span> <span className="text-gray-700 font-medium">{instructor ? `Instructor #${instructor.instructor_id}` : 'N/A'}</span>.
                       </p>
                     </div>
 
-                    {/* Enroll Button with Dropdown */}
+                    {/* Show different button based on user role and enrollment status */}
                     <div className="relative" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
-                        disabled={enrolling === offering.offering_id}
-                      >
-                        {enrolling === offering.offering_id ? (
-                          <>
-                            <span className="loading loading-spinner loading-xs"></span>
-                            Enrolling...
-                          </>
-                        ) : (
-                          <>
-                            {selectedEnrollType[offering.offering_id] ? selectedEnrollType[offering.offering_id] : 'Enroll'}
-                            <ChevronDown className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-                      
-                      {openDropdown === offering.offering_id && (
-                        <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 rounded shadow-lg z-50">
-                          <button
-                            onClick={() => {
-                              handleEnroll(offering.offering_id, 'Credit');
-                              setOpenDropdown(null);
-                            }}
-                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
-                          >
-                            Credit
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleEnroll(offering.offering_id, 'Credit for Minor');
-                              setOpenDropdown(null);
-                            }}
-                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
-                          >
-                            Credit for Minor
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleEnroll(offering.offering_id, 'Credit for Concentration');
-                              setOpenDropdown(null);
-                            }}
-                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
-                          >
-                            Credit for Concentration
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleEnroll(offering.offering_id, 'Credit for Audit');
-                              setOpenDropdown(null);
-                            }}
-                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
-                          >
-                            Credit for Audit
-                          </button>
-                        </div>
+                      {user?.role === 'student' ? (
+                        (() => {
+                          const enrolled = enrolledCourses.find(e => e.course_offering?.offering_id === offering.offering_id);
+                          return enrolled ? (
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded text-sm font-medium border border-green-300">
+                              ✓ Enrolled as {enrolled.enrol_type}
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
+                                disabled={enrolling === offering.offering_id}
+                              >
+                                {enrolling === offering.offering_id ? (
+                                  <>
+                                    <span className="loading loading-spinner loading-xs"></span>
+                                    Enrolling...
+                                  </>
+                                ) : (
+                                  <>
+                                    {selectedEnrollType[offering.offering_id] ? selectedEnrollType[offering.offering_id] : 'Enroll'}
+                                    <ChevronDown className="w-4 h-4" />
+                                  </>
+                                )}
+                              </button>
+                              
+                              {openDropdown === offering.offering_id && (
+                                <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 rounded shadow-lg z-50">
+                                  <button
+                                    onClick={() => {
+                                      handleEnroll(offering.offering_id, 'Credit');
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
+                                  >
+                                    Credit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleEnroll(offering.offering_id, 'Credit for Minor');
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
+                                  >
+                                    Credit for Minor
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleEnroll(offering.offering_id, 'Credit for Concentration');
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
+                                  >
+                                    Credit for Concentration
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleEnroll(offering.offering_id, 'Credit for Audit');
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
+                                  >
+                                    Credit for Audit
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()
+                      ) : (
+                        <button
+                          onClick={() => handleCourseClick(offering)}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm font-medium"
+                        >
+                          View Details
+                        </button>
                       )}
                     </div>
                   </div>

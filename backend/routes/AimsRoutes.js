@@ -20,6 +20,7 @@ import {
   loginUser,
   getEnrolledCourses,
   getCourseOfferings,
+  getMyOfferings,
   getOfferingEnrollments
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
@@ -152,7 +153,7 @@ router.put('/instructor/me', requireAuth, requireRole('instructor'), updateInstr
 router.delete('/instructor/me', requireAuth, requireRole('instructor'), deleteInstructor);
 
 //create user
-router.post("/user.add", requireRole('admin'), createUser);
+router.post("/user/create", requireRole('admin'), createUser);
 router.get('/student', requireRole('admin'), getStudents);
 router.get('/student/me', requireAuth, getStudent);
 router.put('/student/me', requireAuth, updateStudent);
@@ -164,6 +165,10 @@ router.get('/student/enrolled-courses', requireAuth, getEnrolledCourses);
 
 // Course offerings - public read (no auth required to see available courses)
 router.get('/course-offerings', getCourseOfferings);
+
+// My offerings - for instructors
+router.get('/offering/my-offerings', requireAuth, requireRole('instructor'), getMyOfferings);
+
 router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
 
 //create course

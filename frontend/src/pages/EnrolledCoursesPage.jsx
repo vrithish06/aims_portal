@@ -135,6 +135,9 @@ function EnrolledCoursesPage() {
                       <span className="font-bold text-gray-900">SLOT</span> <span className="text-gray-700 font-medium">{offering?.slot || 'N/A'}</span>.
                     </p>
                     <p className="text-gray-800">
+                      <span className="font-bold text-gray-900">ENROLLMENT TYPE</span> <span className="text-blue-600 font-semibold">{enrollment.enrol_type || 'N/A'}</span>.
+                    </p>
+                    <p className="text-gray-800">
                       <span className="font-bold text-gray-900">STATUS</span> 
                       <span className={`ml-1 font-bold px-2 py-0.5 rounded ${
                         enrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' : 
