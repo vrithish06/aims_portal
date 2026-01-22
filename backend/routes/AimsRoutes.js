@@ -35,6 +35,12 @@ import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
 const router = express.Router();
 
+// Preflight handler for all routes (ensures credentials are sent properly)
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
 // Help endpoint
 router.get('/help', getHelp);
 
@@ -149,6 +155,7 @@ router.post('/logout', requireAuth, async (req, res) => {
   }
 });
 router.get('/me', requireAuth, (req, res) => {
+  console.log('[/ME] Called - Session ID:', req.sessionID, 'User:', req.user?.email);
   res.json({ success: true, data: req.user });
 });
 

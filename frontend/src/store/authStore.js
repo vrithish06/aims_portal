@@ -17,12 +17,14 @@ const useAuthStore = create((set) => ({
           isAuthenticated: true,
           isLoading: false,
         });
+        return true;
       } else {
         set({
           user: null,
           isAuthenticated: false,
           isLoading: false,
         });
+        return false;
       }
     } catch (error) {
       console.error("Error initializing auth:", error);
@@ -31,6 +33,7 @@ const useAuthStore = create((set) => ({
         isAuthenticated: false,
         isLoading: false,
       });
+      return false;
     }
   },
 
@@ -89,6 +92,21 @@ const useAuthStore = create((set) => ({
       user: null,
       isAuthenticated: false,
     });
+  },
+
+  // Set user directly (for testing/manual override)
+  setUser: (user) => {
+    if (user) {
+      set({
+        user,
+        isAuthenticated: true,
+      });
+    } else {
+      set({
+        user: null,
+        isAuthenticated: false,
+      });
+    }
   },
 }));
 

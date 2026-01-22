@@ -99,7 +99,9 @@ const sessionConfig = {
     secure: isProduction,  // HTTPS on Render only
     sameSite: isProduction ? "none" : "lax",
     maxAge: 24 * 60 * 60 * 1000,  // 1 day
-    path: "/"
+    path: "/",
+    // For cross-site cookies, set domain explicitly in production
+    domain: isProduction ? (process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL).hostname : undefined) : undefined
   }
 };
 
@@ -108,19 +110,13 @@ if (sessionStore) {
   sessionConfig.store = sessionStore;
 }
 
-// Add domain only in production
-if (isProduction && process.env.BACKEND_URL) {
-  const backendUrl = new URL(process.env.BACKEND_URL);
-  sessionConfig.cookie.domain = backendUrl.hostname;
-  console.log("[SESSION] Domain set to:", backendUrl.hostname);
-}
-
 console.log("[SESSION] Cookie config:", {
   httpOnly: sessionConfig.cookie.httpOnly,
   secure: sessionConfig.cookie.secure,
   sameSite: sessionConfig.cookie.sameSite,
   maxAge: sessionConfig.cookie.maxAge,
-  path: sessionConfig.cookie.path
+  path: sessionConfig.cookie.path,
+  domain: sessionConfig.cookie.domain
 });
 
 app.use(session(sessionConfig));
