@@ -680,6 +680,139 @@ export const getEnrolledCourses = async (req, res) => {
   }
 };
 
+// Get student credit details from student_credit table
+export const getStudentCredits = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (studentError || !studentData) {
+      console.log("Student not found for user_id:", userId);
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    // Fetch student credit records
+    const { data: credits, error: creditsError } = await supabase
+      .from("student_credit")
+      .select(`
+        credit_id,
+        student_id,
+        acad_session,
+        cred_earned,
+        cred_registered,
+        cred_earned_total,
+        enrol_id,
+        grade,
+        is_deleted
+      `)
+      .eq('student_id', studentData.student_id)
+      .eq('is_deleted', false)
+      .order('acad_session', { ascending: true });
+
+    if (creditsError) throw creditsError;
+
+    // Fetch SGPA from cgpa_table for each session
+    const { data: cgpaData, error: cgpaError } = await supabase
+      .from("cgpa_table")
+      .select(`
+        id,
+        student_id,
+        cg,
+        sg,
+        semester,
+        session
+      `)
+      .eq('student_id', studentData.student_id)
+      .order('session', { ascending: true });
+
+    if (cgpaError) throw cgpaError;
+
+    // Create a map of SGPA by session for quick lookup
+    const sgpaMap = {};
+    cgpaData?.forEach(row => {
+      sgpaMap[row.session] = {
+        sg: row.sg,
+        cg: row.cg,
+        semester: row.semester
+      };
+    });
+
+    // Enrich credits data with SGPA
+    const enrichedCredits = credits?.map(credit => ({
+      ...credit,
+      sgpa: sgpaMap[credit.acad_session]?.sg || 0
+    })) || [];
+
+    return res.status(200).json({
+      success: true,
+      data: enrichedCredits
+    });
+
+  } catch (err) {
+    console.error("getStudentCredits error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get CGPA and SGPA from cgpa_table
+export const getStudentCGPA = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (studentError || !studentData) {
+      console.log("Student not found for user_id:", userId);
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("cgpa_table")
+      .select(`
+        id,
+        student_id,
+        cg,
+        sg,
+        semester,
+        session
+      `)
+      .eq('student_id', studentData.student_id)
+      .order('session', { ascending: true });
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+
+  } catch (err) {
+    console.error("getStudentCGPA error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
 //  Get all course offerings
 export const getCourseOfferings = async (req, res) => {
   try {

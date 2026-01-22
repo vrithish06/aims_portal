@@ -19,6 +19,8 @@ import {
   createOffering,
   loginUser,
   getEnrolledCourses,
+  getStudentCredits,
+  getStudentCGPA,
   getCourseOfferings,
   getMyOfferings,
   getAllOfferings,
@@ -171,6 +173,12 @@ router.delete('/student/me', requireAuth, deleteStudent);
 // Enrolled courses
 // Enrolled courses for the currently authenticated student
 router.get('/student/enrolled-courses', requireAuth, getEnrolledCourses);
+
+// Student credits - fetch from student_credit table (with SGPA from cgpa_table)
+router.get('/student/credits', requireAuth, getStudentCredits);
+
+// Student CGPA/SGPA - fetch from cgpa_table
+router.get('/student/cgpa', requireAuth, getStudentCGPA);
 
 // Course offerings - public read (no auth required to see available courses)
 router.get('/course-offerings', getCourseOfferings);

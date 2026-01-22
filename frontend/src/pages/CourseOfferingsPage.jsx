@@ -3,7 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
-import { Zap, ChevronDown, Search, X, ListFilter } from 'lucide-react';
+import { 
+  Zap, 
+  ChevronDown, 
+  Search, 
+  X, 
+  ListFilter,
+  User,
+  Calendar,
+  Clock,
+  BookOpen,
+  Users,
+  GraduationCap
+} from 'lucide-react';
 
 function CourseOfferingsPage() {
   const [offerings, setOfferings] = useState([]);
@@ -16,6 +28,8 @@ function CourseOfferingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(null);
+  
+  // Filter States
   const [tempFilters, setTempFilters] = useState({
     department: [],
     slot: [],
@@ -28,6 +42,7 @@ function CourseOfferingsPage() {
     session: [],
     status: []
   });
+
   const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
 
@@ -37,6 +52,17 @@ function CourseOfferingsPage() {
       fetchEnrolledCourses();
     }
   }, [user]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdown && !event.target.closest('.enroll-dropdown-container')) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openDropdown]);
 
   const fetchCourseOfferings = async () => {
     try {
@@ -108,14 +134,10 @@ function CourseOfferingsPage() {
       if (response.data.success) {
         toast.success(`Successfully enrolled as ${enrollType}!`);
         
-        setTimeout(async () => {
-          await fetchEnrollmentStats(offeringId);
-          await fetchCourseOfferings();
-          if (user?.role === 'student') {
-            await fetchEnrolledCourses();
-          }
-          setOpenDropdown(null);
-        }, 300);
+        // Refresh data
+        await fetchEnrollmentStats(offeringId);
+        await fetchEnrolledCourses(); // Update enrollment status immediately
+        setOpenDropdown(null);
       } else {
         toast.error('Enrollment failed');
       }
@@ -146,7 +168,6 @@ function CourseOfferingsPage() {
 
       if (response.data.success) {
         toast.success(`Offering ${newStatus === 'Accepted' ? 'accepted' : 'rejected'} successfully!`);
-        // Update local state
         setOfferings(offerings.map(off => 
           off.offering_id === offeringId 
             ? { ...off, status: newStatus === 'Accepted' ? 'Enrolling' : 'Rejected' }
@@ -163,12 +184,11 @@ function CourseOfferingsPage() {
     }
   };
 
-  // Get unique filter options
+  // Filter Logic
   const getUniqueValues = (key) => {
     return [...new Set(offerings.map(o => o[key]).filter(Boolean))].sort();
   };
 
-  // Filter offerings based on search and filters
   const filteredOfferings = offerings.filter(offering => {
     const course = offering.course;
     const matchesSearch = !searchQuery || 
@@ -196,21 +216,6 @@ function CourseOfferingsPage() {
   const applyFilters = () => {
     setFilters(tempFilters);
     setShowFilters(false);
-  };
-
-  const handleFilterKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      applyFilters();
-    }
-  };
-
-  const toggleFilters = () => {
-    if (showFilters) {
-      setShowFilters(false);
-    } else {
-      setTempFilters(filters);
-      setShowFilters(true);
-    }
   };
 
   const clearAllFilters = () => {
@@ -254,7 +259,7 @@ function CourseOfferingsPage() {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex gap-3">
           <button
-            onClick={toggleFilters}
+            onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors flex-shrink-0 ${
               showFilters 
                 ? 'bg-amber-500 text-white border-amber-500' 
@@ -293,80 +298,21 @@ function CourseOfferingsPage() {
 
       {/* Main Content */}
       <div className="p-4 flex gap-4">
-        {/* Filters Sidebar - Conditional Rendering */}
+        {/* Filters Sidebar */}
         {showFilters && (
-          <div className="w-80 flex-shrink-0" onKeyPress={handleFilterKeyPress}>
-            <div className="bg-blue-50 rounded-lg border border-blue-300 p-6 sticky top-24">
+          <div className="w-80 flex-shrink-0">
+            <div className="bg-blue-50 rounded-lg border border-blue-300 p-6 sticky top-24 max-h-[85vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900">Filters</h3>
                 {Object.values(tempFilters).some(f => f.length > 0) && (
                   <button
-                    onClick={() => setTempFilters({
-                      department: [],
-                      slot: [],
-                      session: [],
-                      status: []
-                    })}
+                    onClick={() => setTempFilters({ department: [], slot: [], session: [], status: [] })}
                     className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
                     <X className="w-4 h-4" />
                     Clear
                   </button>
                 )}
-              </div>
-
-              {/* Department Filter */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Department</h4>
-                <div className="space-y-2">
-                  {getUniqueValues('dept_name').map(dept => (
-                    <label key={dept} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tempFilters.department.includes(dept)}
-                        onChange={() => toggleTempFilter('department', dept)}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">{dept}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Session Filter */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Session</h4>
-                <div className="space-y-2">
-                  {getUniqueValues('acad_session').map(session => (
-                    <label key={session} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tempFilters.session.includes(session)}
-                        onChange={() => toggleTempFilter('session', session)}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">{session}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Slot Filter */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Slot</h4>
-                <div className="space-y-2">
-                  {getUniqueValues('slot').map(slot => (
-                    <label key={slot} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tempFilters.slot.includes(slot)}
-                        onChange={() => toggleTempFilter('slot', slot)}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">{slot}</span>
-                    </label>
-                  ))}
-                </div>
               </div>
 
               {/* Status Filter */}
@@ -387,7 +333,42 @@ function CourseOfferingsPage() {
                 </div>
               </div>
 
-              {/* Apply Filters Button */}
+              {/* Department Filter */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Department</h4>
+                <div className="space-y-2">
+                  {getUniqueValues('dept_name').map(dept => (
+                    <label key={dept} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.department.includes(dept)}
+                        onChange={() => toggleTempFilter('department', dept)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{dept}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+               {/* Slot Filter */}
+               <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Slot</h4>
+                <div className="space-y-2">
+                  {getUniqueValues('slot').map(slot => (
+                    <label key={slot} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.slot.includes(slot)}
+                        onChange={() => toggleTempFilter('slot', slot)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{slot}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <button
                 onClick={applyFilters}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -400,7 +381,6 @@ function CourseOfferingsPage() {
 
         {/* Courses Grid */}
         <div className="flex-1">
-          {/* Active Filters Display */}
           {hasActiveFilters() && (
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
@@ -429,117 +409,147 @@ function CourseOfferingsPage() {
                 const instructor = offering.instructor;
                 const enrollmentCount = enrollmentStats[offering.offering_id] || 0;
                 
+                // Status Color Logic
+                const getStatusStyle = (status) => {
+                  switch(status?.toLowerCase()) {
+                    case 'open': case 'enrolling': return 'bg-green-100 text-green-700 border-green-200';
+                    case 'closed': case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
+                    case 'ongoing': return 'bg-amber-100 text-amber-700 border-amber-200';
+                    case 'proposed': return 'bg-purple-100 text-purple-700 border-purple-200';
+                    default: return 'bg-blue-100 text-blue-700 border-blue-200';
+                  }
+                };
+
                 return (
                   <div 
                     key={offering.offering_id}
                     onClick={() => handleCourseClick(offering)}
-                    className="bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 rounded-lg p-6 cursor-pointer hover:shadow-xl transition-all hover:border-blue-400"
+                    className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col relative"
                   >
-                    {/* Course Code - Link Style */}
-                    <div className="mb-4">
-                      <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-2xl text-blue-700 hover:text-blue-900 hover:underline font-bold">
-                        {course?.code}
-                      </a>
-                      {course?.title && (
-                        <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCourseClick(offering); }} className="text-lg text-blue-600 hover:text-blue-800 hover:underline font-semibold block mt-1">
-                          {course?.title}
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Course Details */}
-                    <div className="space-y-2 text-sm mb-6">
-                      <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">CREDITS</span> <span className="text-gray-700 font-medium">{course?.ltp || 'N/A'}</span>. 
-                        <span className="font-bold text-gray-900 ml-2">STATUS</span> 
-                        <span className={`ml-1 font-bold ${
-                          offering.status === 'open' ? 'text-green-600 bg-green-100 px-2 py-0.5 rounded' : 
-                          offering.status === 'closed' ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded' : 
-                          offering.status === 'ongoing' ? 'text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded' : 
-                          'text-blue-600 bg-blue-100 px-2 py-0.5 rounded'
-                        }`}>
-                          {offering.status?.charAt(0).toUpperCase() + offering.status?.slice(1) || 'Unknown'}
+                    {/* CARD HEADER */}
+                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                          <span className="inline-block text-xs font-bold tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded-md mb-2">
+                            {course?.code}
+                          </span>
+                          <h3 className="text-lg font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-2">
+                            {course?.title || 'Untitled Course'}
+                          </h3>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border capitalize whitespace-nowrap ${getStatusStyle(offering.status)}`}>
+                          {offering.status || 'Unknown'}
                         </span>
-                        . <span className="font-bold text-gray-900 ml-2">SESSION</span> <span className="text-gray-700 font-medium">{offering.acad_session || 'N/A'}</span>.
-                      </p>
-
-                      <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">ENROLLMENT</span> <span className="text-gray-700 font-medium">{enrollmentCount} in Sec.-{offering.section || 'A'}</span>.
-                      </p>
-
-                      <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">OFFERED BY</span> <span className="text-gray-700 font-medium">{offering.dept_name || 'N/A'}</span>.
-                      </p>
-
-                      <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">SLOT</span> <span className="text-gray-700 font-medium">{offering.slot || 'N/A'}</span>.
-                      </p>
-
-                      <p className="text-gray-800">
-                        <span className="font-bold text-gray-900">INSTRUCTOR(S)</span> <span className="text-gray-700 font-medium">{instructor && instructor.users ? `${instructor.users.first_name} ${instructor.users.last_name}` : instructor ? `Instructor #${instructor.instructor_id}` : 'N/A'}</span>.
-                      </p>
+                      </div>
                     </div>
 
-                    {/* Show different button based on user role and enrollment status */}
-                    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                      {/* ADMIN ACTIONS - Accept/Reject Proposed Courses */}
-                      {user?.role === 'admin' && offering.status === 'Proposed' && (
+                    {/* CARD BODY */}
+                    <div className="p-5 flex-1 space-y-4">
+                      
+                      {/* Row 1: Instructor & Dept */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className="truncate max-w-[120px]" title={`Instructor #${instructor?.instructor_id}`}>
+                            {instructor ? `Inst. #${instructor.instructor_id}` : 'TBA'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <GraduationCap className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className="truncate max-w-[100px]">{offering.dept_name}</span>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Grid for Slot & Credits */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-orange-500" />
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase">Slot</span>
+                            <span className="text-sm font-bold text-gray-700">{offering.slot}</span>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-purple-500" />
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase">Credits</span>
+                            <span className="text-sm font-bold text-gray-700">{course?.ltp}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Row 3: Session & Enrollment */}
+                      <div className="flex items-center justify-between pt-2 text-xs text-gray-500 border-t border-dashed border-gray-200">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{offering.acad_session}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>{enrollmentCount} Enrolled (Sec {offering.section || 'A'})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CARD FOOTER - Actions */}
+                    <div className="p-4 pt-0 mt-auto" onClick={(e) => e.stopPropagation()}>
+                      
+                      {/* ADMIN: Accept/Reject */}
+                      {user?.role === 'admin' && offering.status === 'Proposed' ? (
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleOfferingStatusChange(offering.offering_id, 'Accepted')}
                             disabled={statusUpdating === offering.offering_id}
-                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm font-medium disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium shadow-sm"
                           >
-                            {statusUpdating === offering.offering_id ? 'Updating...' : 'Accept'}
+                            {statusUpdating === offering.offering_id ? '...' : 'Accept'}
                           </button>
                           <button
                             onClick={() => handleOfferingStatusChange(offering.offering_id, 'Rejected')}
                             disabled={statusUpdating === offering.offering_id}
-                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm font-medium disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium shadow-sm"
                           >
-                            {statusUpdating === offering.offering_id ? 'Updating...' : 'Reject'}
+                            {statusUpdating === offering.offering_id ? '...' : 'Reject'}
                           </button>
                         </div>
-                      )}
-
-                      {/* STUDENT ACTIONS - Enrollment */}
-                      {user?.role === 'student' ? (
+                      ) : user?.role === 'student' ? (
+                        /* STUDENT: Enroll Logic */
                         (() => {
                           const enrolled = enrolledCourses.find(e => e.course_offering?.offering_id === offering.offering_id);
                           
-                          // If offering status is Cancelled, show cancelled badge
                           if (offering.status === 'Cancelled') {
                             return (
-                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded text-sm font-medium border border-red-300">
-                                ✗ Enrollment Cancelled
+                              <div className="w-full py-2.5 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200 text-center">
+                                Enrollment Cancelled
                               </div>
                             );
                           }
                           
-                          // If already enrolled, show enrolled status
                           if (enrolled) {
                             return (
-                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded text-sm font-medium border border-green-300">
-                                ✓ Enrolled as {enrolled.enrol_type}
+                              <div className="w-full py-2.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200 text-center flex items-center justify-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                Enrolled as {enrolled.enrol_type}
                               </div>
                             );
                           }
                           
-                          // If status is NOT Enrolling, show disabled message
                           if (offering.status !== 'Enrolling') {
                             return (
-                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded text-sm font-medium border border-gray-300">
-                                Enrollment Not Available
-                              </div>
+                              <button
+                                onClick={() => handleCourseClick(offering)}
+                                className="w-full bg-gray-100 text-gray-600 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                              >
+                                View Details
+                              </button>
                             );
                           }
                           
-                          // If status is Enrolling, show enrollment options
                           return (
-                            <div className="relative w-full">
+                            <div className="relative enroll-dropdown-container">
                               <button
                                 onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
-                                className="w-full inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
+                                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-all shadow-sm shadow-blue-200 active:transform active:scale-95 text-sm"
                                 disabled={enrolling === offering.offering_id}
                               >
                                 {enrolling === offering.offering_id ? (
@@ -556,58 +566,29 @@ function CourseOfferingsPage() {
                               </button>
                               
                               {openDropdown === offering.offering_id && (
-                                <div className="absolute top-full left-0 right-0 mt-2 w-full bg-white border border-gray-300 rounded shadow-lg z-50">
-                                  <button
-                                    onClick={() => {
-                                      handleEnroll(offering.offering_id, 'Credit');
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
-                                  >
-                                    Credit
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handleEnroll(offering.offering_id, 'Credit for Minor');
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
-                                  >
-                                    Credit for Minor
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handleEnroll(offering.offering_id, 'Credit for Concentration');
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
-                                  >
-                                    Credit for Concentration
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handleEnroll(offering.offering_id, 'Credit for Audit');
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm border-t border-gray-200"
-                                  >
-                                    Credit for Audit
-                                  </button>
+                                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                  {['Credit', 'Credit for Minor', 'Credit for Concentration', 'Credit for Audit'].map((type) => (
+                                    <button
+                                      key={type}
+                                      onClick={() => handleEnroll(offering.offering_id, type)}
+                                      className="block w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 text-gray-700 text-sm font-medium border-b border-gray-100 last:border-0 transition-colors"
+                                    >
+                                      {type}
+                                    </button>
+                                  ))}
                                 </div>
                               )}
                             </div>
                           );
                         })()
                       ) : (
-                        // For non-students (instructor/admin) who aren't taking any action, show View Details
-                        !user?.role === 'admin' || offering.status !== 'Proposed' ? (
-                          <button
-                            onClick={() => handleCourseClick(offering)}
-                            className="w-full inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm font-medium"
-                          >
-                            View Details
-                          </button>
-                        ) : null
+                        /* GUEST/INSTRUCTOR: View Details */
+                        <button
+                          onClick={() => handleCourseClick(offering)}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium shadow-sm"
+                        >
+                          View Details
+                        </button>
                       )}
                     </div>
                   </div>

@@ -1,5 +1,5 @@
 import { LogOut, Menu, X } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import { useEffect, useState } from "react";
 
@@ -18,6 +18,10 @@ function Navbar() {
     logout();
     navigate("/", { replace: true });
   };
+
+  const navClass = ({ isActive }) =>
+  `text-gray-700 font-medium transition-colors text-sm lg:text-base hover:text-black
+   ${isActive ? "text-black underline underline-offset-8 decoration-2" : ""}`;
 
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -42,92 +46,76 @@ function Navbar() {
         {/* Desktop Navigation Links */}
         {isAuthenticated && (
           <div className="hidden md:flex gap-4 lg:gap-8 items-center">
-            <Link
-              to="/"
-              className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-            >
+            <NavLink to="/" className={navClass}>
               Dashboard
-            </Link>
+            </NavLink>
 
             {user?.role === "student" && (
               <>
-                <Link
-                  to="/enrolled-courses"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
+                <NavLink to="/enrolled-courses" className={navClass}>
                   My Courses
-                </Link>
+                </NavLink>
 
-                <Link
-                  to="/course-offerings"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
+                <NavLink to="/course-offerings" className={navClass}>
                   Browse Courses
-                </Link>
+                </NavLink>
 
-                <Link
-                  to="/student-record"
-                  className="text-gray-700 hover:text-black font-medium text-sm lg:text-base"
-                >
+                <NavLink to="/student-record" className={navClass}>
                   Student Record
-                </Link>
+                </NavLink>
               </>
             )}
 
             {user?.role === "instructor" && (
               <>
                 <div className="dropdown dropdown-hover">
-                  <button className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base">
-                    My Work
-                  </button>
-                  <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-                    <li>
-                      <Link to="/my-offerings">My Offerings</Link>
-                    </li>
-                    <li>
-                      <Link to="/action-pending">Action Pending</Link>
-                    </li>
-                  </ul>
-                </div>
+              <NavLink
+                to="#"
+                className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
+              >
+                My Work
+              </NavLink>
 
-                <Link
-                  to="/course-offerings"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
-                  Browse Courses
-                </Link>
+              <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                <li>
+                  <NavLink to="/my-offerings" className={navClass}>
+                    My Offerings
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/action-pending" className={navClass}>
+                    Action Pending
+                  </NavLink>
+                </li>
+              </ul>
+            </div>
 
-                <Link
-                  to="/course-add"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
-                  Add Course
-                </Link>
+            <NavLink to="/course-offerings" className={navClass}>
+              Browse Courses
+            </NavLink>
+
+            <NavLink to="/course-add" className={navClass}>
+              Add Course
+            </NavLink>
               </>
             )}
 
             {user?.role === "admin" && (
               <>
-                <Link
-                  to="/course-offerings"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
+                <NavLink to="/course-offerings" className={navClass}>
                   Courses
-                </Link>
+                </NavLink>
 
-                <Link
-                  to="/add-user"
-                  className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                >
+                <NavLink to="/add-user" className={navClass}>
                   Add User
-                </Link>
+                </NavLink>
               </>
             )}
           </div>
         )}
 
         {/* Right side actions */}
-        <div className="flex-none gap-2 sm:gap-3">
+        <div className="flex-none gap-2 sm:gap-3 pl-2 sm:pl-4">
           {isAuthenticated && user ? (
             <>
               {/* Mobile Menu Toggle */}
