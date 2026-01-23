@@ -628,25 +628,89 @@ export const loginUser = async (req, res) => {
 };
 
 
-// Get enrolled courses for a student
+// // Get enrolled courses for a student
+// export const getEnrolledCourses = async (req, res) => {
+//   const userId = req.user?.user_id;
+
+//   try {
+//     const { data: studentData, error: studentError } = await supabase
+//       .from("student")
+//       .select("student_id")
+//       .eq('user_id', userId)
+//       .single();
+
+//     if (studentError || !studentData) {
+//       console.log("Student not found for user_id:", userId);
+//       return res.status(404).json({
+//         success: false,
+//         message: "Student record not found"
+//       });
+//     }
+
+//     const { data, error } = await supabase
+//       .from("course_enrollment")
+//       .select(`
+//         enrollment_id,
+//         enrol_type,
+//         enrol_status,
+//         grade,
+//         offering_id,
+//         course_offering:offering_id (
+//           *,
+//           course:course_id (
+//             code,
+//             title,
+//             ltp
+//           ),
+//           instructor:instructor_id (
+//             user_id,
+//             users:user_id (
+//               first_name,
+//               last_name,
+//               email
+//             )
+//           )
+//         )
+//       `)
+//       .eq('student_id', studentData.student_id)
+//       .eq('is_deleted', false);
+
+//     if (error) throw error;
+
+//     return res.status(200).json({
+//       success: true,
+//       data: data || []
+//     });
+
+//   } catch (err) {
+//     console.error("getEnrolledCourses error:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: err.message
+//     });
+//   }
+// };
+
+// Get enrolled courses for a student (NEW SCHEMA)
 export const getEnrolledCourses = async (req, res) => {
   const userId = req.user?.user_id;
 
   try {
+    // 1️⃣ Get student_id
     const { data: studentData, error: studentError } = await supabase
       .from("student")
       .select("student_id")
-      .eq('user_id', userId)
+      .eq("user_id", userId)
       .single();
 
     if (studentError || !studentData) {
-      console.log("Student not found for user_id:", userId);
       return res.status(404).json({
         success: false,
         message: "Student record not found"
       });
     }
 
+    // 2️⃣ Fetch enrollments with correct joins
     const { data, error } = await supabase
       .from("course_enrollment")
       .select(`
@@ -656,26 +720,36 @@ export const getEnrolledCourses = async (req, res) => {
         grade,
         offering_id,
         course_offering:offering_id (
-          *,
+          offering_id,
+          acad_session,
+          status,
+          slot,
+          section,
           course:course_id (
             code,
             title,
             ltp
           ),
-          instructor:instructor_id (
-            user_id,
-            users:user_id (
-              first_name,
-              last_name,
-              email
+          course_offering_instructor (
+            is_coordinator,
+            instructor:instructor_id (
+              instructor_id,
+              users:user_id (
+                first_name,
+                last_name,
+                email
+              )
             )
           )
         )
       `)
-      .eq('student_id', studentData.student_id)
-      .eq('is_deleted', false);
+      .eq("student_id", studentData.student_id)
+      .eq("is_deleted", false);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase query error:", error);
+      throw error;
+    }
 
     return res.status(200).json({
       success: true,
@@ -690,6 +764,7 @@ export const getEnrolledCourses = async (req, res) => {
     });
   }
 };
+
 
 // Get student credit details from student_credit table
 export const getStudentCredits = async (req, res) => {
