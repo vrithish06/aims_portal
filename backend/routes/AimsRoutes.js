@@ -16,7 +16,7 @@ import {
   deleteStudent,
   createEnrollment,
   updateEnrollment,
-  createOffering,
+  // createOffering,
   loginUser,
   getEnrolledCourses,
   getStudentCredits,
@@ -34,7 +34,11 @@ import {
   getPendingAdvisorEnrollments,
   getAlerts,
   createAlert,
-  deleteAlert
+  deleteAlert,
+  searchCourses,
+  createOfferingWithInstructors,
+  getAllInstructors,
+  getCourseOfferingInstructors
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -197,8 +201,8 @@ router.get('/enrollment/pending-instructor', requireAuth, getPendingInstructorEn
 router.get('/enrollment/pending-advisor', requireAuth, getPendingAdvisorEnrollments);
 
 //create course
-// Instructor creates a course (uses session identity)
-router.post('/instructor/course', requireAuth, requireRole('instructor'), createCourse);
+// Admin creates a course (uses session identity)
+router.post('/admin/add-course', requireAuth, requireRole('admin'), createCourse);
 
 // Enrollment endpoints - any authenticated user can enroll/update their enrollment
 router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
@@ -211,8 +215,15 @@ router.post('/offering/:offeringId/drop', requireAuth, dropCourse);
 // Instructor/Admin update specific enrollment status for approvals
 router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updateEnrollmentStatus);
 
-// Instructor creates offerings for their courses
-router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
+// // Instructor creates offerings for their courses
+// router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
+
+// New endpoints for AddOfferingPage
+router.get('/courses/search', searchCourses);
+router.get('/instructors/all', requireAuth, getAllInstructors);
+router.get('/course/offering/instructors',requireAuth,getCourseOfferingInstructors);
+
+router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 
 // Instructor/Admin updates offering status (accept/reject proposed offerings)
 router.put('/offering/:offeringId/status', requireAuth, updateOfferingStatus);

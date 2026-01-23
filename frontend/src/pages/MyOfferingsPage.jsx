@@ -463,7 +463,7 @@ function MyOfferingsPage() {
                       ) : (
                         <button
                           onClick={() => handleCourseClick(offering)}
-                          className="w-full bg-gray-900 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm"
+                          className="w-full bg-blue-600 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm shadow-sm shadow-blue-200"
                         >
                           Manage & View Details
                         </button>

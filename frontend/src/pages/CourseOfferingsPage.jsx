@@ -29,8 +29,9 @@ function CourseOfferingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(null);
+  const [coordinators, setCoordinators] = useState({});
   const [slashWarning, setSlashWarning] = useState({ show: false, offering: null, enrollType: null });
-  
+
   // Filter States
   const [tempFilters, setTempFilters] = useState({
     department: [],
@@ -50,6 +51,7 @@ function CourseOfferingsPage() {
 
   useEffect(() => {
     fetchCourseOfferings();
+    fetchCoordinators();
     if (user?.role === 'student') {
       fetchEnrolledCourses();
     }
@@ -66,17 +68,39 @@ function CourseOfferingsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openDropdown]);
 
+  const fetchCoordinators = async () => {
+    try {
+      const response = await axiosClient.get('/course/offering/instructors');
+      if (response.data.success) {
+        const coordinatorMap = {};
+        Object.keys(response.data.data).forEach(offeringId => {
+          const coordinatorInfo = response.data.data[offeringId].coordinator;
+          if (coordinatorInfo) {
+            coordinatorMap[offeringId] = coordinatorInfo.name;
+          }
+        });
+        setCoordinators(coordinatorMap);
+      }
+    } catch (error) {
+      console.error('Failed to fetch coordinators:', error);
+    }
+  };
+
   const fetchCourseOfferings = async () => {
     try {
       setLoading(true);
+
       const response = await axiosClient.get('/course-offerings');
-      
-      if (response.data.success) {
-        setOfferings(response.data.data);
-        response.data.data.forEach(offering => {
-          fetchEnrollmentStats(offering.offering_id);
-        });
-      }
+      if (!response.data.success) return;
+
+      const offerings = response.data.data;
+      setOfferings(offerings);
+
+      // Fetch enrollment stats in parallel
+      await Promise.all(
+        offerings.map(o => fetchEnrollmentStats(o.offering_id))
+      );
+
     } catch (error) {
       toast.error('Failed to load course offerings');
       console.error('Fetch error:', error);
@@ -84,6 +108,7 @@ function CourseOfferingsPage() {
       setLoading(false);
     }
   };
+
 
   const fetchEnrollmentStats = async (offeringId) => {
     try {
@@ -429,7 +454,7 @@ function CourseOfferingsPage() {
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
               {filteredOfferings.map((offering) => {
                 const course = offering.course;
-                const instructor = offering.instructor;
+                const coordinatorName = coordinators[offering.offering_id] || 'TBA';
                 const enrollmentCount = enrollmentStats[offering.offering_id] || 0;
                 
                 // Status Color Logic
@@ -473,8 +498,8 @@ function CourseOfferingsPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="truncate max-w-[120px]" title={`Instructor #${instructor?.instructor_id}`}>
-                            {instructor ? `Inst. #${instructor.instructor_id}` : 'TBA'}
+                          <span>
+                            {coordinatorName}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -618,7 +643,7 @@ function CourseOfferingsPage() {
                         /* GUEST/INSTRUCTOR: View Details */
                         <button
                           onClick={() => handleCourseClick(offering)}
-                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium shadow-sm"
+                          className="w-full bg-blue-600 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm shadow-sm shadow-blue-200"
                         >
                           View Details
                         </button>

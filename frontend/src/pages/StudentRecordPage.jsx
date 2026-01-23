@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import axiosClient from "../api/axiosClient";
-import { BookOpen, User, Mail } from "lucide-react";
+import { BookOpen, User } from "lucide-react";
 
 function StudentRecordPage() {
   const [studentInfo, setStudentInfo] = useState(null);
@@ -11,6 +11,9 @@ function StudentRecordPage() {
   const [cgpaData, setCGPAData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // ✅ NEW: session filter state
+  const [selectedSession, setSelectedSession] = useState("ALL");
 
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -114,34 +117,34 @@ function StudentRecordPage() {
   // ✅ Group courses by session + attach sgpa/credits from student_credit table
   const groupCoursesBySession = useMemo(() => {
     const sessionGroups = {};
-    
+
     // Create a map of enrollments by ID for quick lookup
     const enrollmentMap = {};
-    enrolledCourses.forEach(enrollment => {
+    enrolledCourses.forEach((enrollment) => {
       enrollmentMap[enrollment.enrollment_id] = enrollment;
     });
-    
+
     // Create a map of SGPA by session from cgpaData
     const sgpaMap = {};
-    cgpaData.forEach(row => {
+    cgpaData.forEach((row) => {
       sgpaMap[row.session] = {
         sg: row.sg,
         cg: row.cg,
-        semester: row.semester
+        semester: row.semester,
       };
     });
-    
+
     // Group student_credit records by session
-    studentCredits.forEach(credit => {
-      const session = credit.acad_session || 'Unknown';
+    studentCredits.forEach((credit) => {
+      const session = credit.acad_session || "Unknown";
       if (!sessionGroups[session]) {
         sessionGroups[session] = [];
       }
-      
+
       // Enrich credit data with course enrollment information
       const enrichedCredit = {
         ...credit,
-        enrollment: enrollmentMap[credit.enrol_id]
+        enrollment: enrollmentMap[credit.enrol_id],
       };
       sessionGroups[session].push(enrichedCredit);
     });
@@ -149,15 +152,21 @@ function StudentRecordPage() {
     return Object.entries(sessionGroups)
       .map(([session, credits]) => {
         // Sum credits for the session
-        const totalRegisteredCredits = credits.reduce((sum, c) => sum + (parseFloat(c.cred_registered) || 0), 0);
-        const totalEarnedCredits = credits.reduce((sum, c) => sum + (parseFloat(c.cred_earned) || 0), 0);
-        
+        const totalRegisteredCredits = credits.reduce(
+          (sum, c) => sum + (parseFloat(c.cred_registered) || 0),
+          0
+        );
+        const totalEarnedCredits = credits.reduce(
+          (sum, c) => sum + (parseFloat(c.cred_earned) || 0),
+          0
+        );
+
         // Get SGPA from cgpaData
         const sgpa = sgpaMap[session]?.sg || 0;
-        
+
         // Get courses for this session
-        const courses = credits.map(c => c.enrollment).filter(Boolean);
-        
+        const courses = credits.map((c) => c.enrollment).filter(Boolean);
+
         return {
           session,
           credits,
@@ -169,6 +178,17 @@ function StudentRecordPage() {
       })
       .sort((a, b) => a.session.localeCompare(b.session));
   }, [studentCredits, enrolledCourses, cgpaData]);
+
+  // ✅ NEW: list of all sessions for dropdown
+  const availableSessions = useMemo(() => {
+    return groupCoursesBySession.map((g) => g.session);
+  }, [groupCoursesBySession]);
+
+  // ✅ NEW: filtered sessions based on dropdown selection
+  const filteredSessionGroups = useMemo(() => {
+    if (selectedSession === "ALL") return groupCoursesBySession;
+    return groupCoursesBySession.filter((g) => g.session === selectedSession);
+  }, [groupCoursesBySession, selectedSession]);
 
   // ✅ Total earned credits across sessions
   const totalEarnedCredits = useMemo(() => {
@@ -199,14 +219,8 @@ function StudentRecordPage() {
     );
   }
 
-  const completedCoursesCount = enrolledCourses.filter(
-    (c) => c.enrol_status === "completed"
-  ).length;
-
   const cgpaValue = Number(studentInfo?.cgpa);
-  const cgpaDisplay = Number.isFinite(cgpaValue)
-    ? cgpaValue.toFixed(2)
-    : "N/A";
+  const cgpaDisplay = Number.isFinite(cgpaValue) ? cgpaValue.toFixed(2) : "N/A";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -310,16 +324,18 @@ function StudentRecordPage() {
                     {studentInfo.users?.gender || "N/A"}
                   </p>
                 </div>
-                
-
               </div>
 
               {/* ✅ Summary Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                 {/* CGPA */}
                 <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                  <p className="text-xs font-semibold text-gray-500 tracking-wide">CGPA</p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900">{cgpaDisplay}</p>
+                  <p className="text-xs font-semibold text-gray-500 tracking-wide">
+                    CGPA
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900">
+                    {cgpaDisplay}
+                  </p>
                 </div>
 
                 {/* Total Earned Credits */}
@@ -347,11 +363,27 @@ function StudentRecordPage() {
 
           {/* Course Records Grouped by Session */}
           <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-blue-200">
-              <BookOpen className="w-6 h-6 text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-900">
-                Course Records by Session
-              </h2>
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-6 pb-4 border-b-2 border-blue-200">
+              <div className="flex items-center gap-3">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Course Records by Session
+                </h2>
+              </div>
+
+              {/* ✅ NEW: Session Filter Dropdown */}
+              <select
+                className="select select-bordered w-full sm:w-64"
+                value={selectedSession}
+                onChange={(e) => setSelectedSession(e.target.value)}
+              >
+                <option value="ALL">All Sessions</option>
+                {availableSessions.map((session) => (
+                  <option key={session} value={session}>
+                    {session}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {studentCredits.length === 0 ? (
@@ -360,7 +392,7 @@ function StudentRecordPage() {
               </div>
             ) : (
               <div className="space-y-8">
-                {[...groupCoursesBySession].reverse().map((sessionGroup) => (
+                {[...filteredSessionGroups].reverse().map((sessionGroup) => (
                   <div
                     key={sessionGroup.session}
                     className="border-b-2 border-gray-200 pb-8 last:border-b-0"
@@ -368,34 +400,40 @@ function StudentRecordPage() {
                     {/* Session Header */}
                     <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
                       <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                      <span className="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                           Session
                         </span>
                         {sessionGroup.session}
                       </h3>
 
                       <div className="flex flex-wrap gap-3">
-                          <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
-                            <p className="text-xs font-semibold text-gray-500">SGPA</p>
-                            <p className="text-lg font-bold text-gray-900">
-                              {Number(sessionGroup.sgpa).toFixed(2)}
-                            </p>
-                          </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
+                          <p className="text-xs font-semibold text-gray-500">
+                            SGPA
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {Number(sessionGroup.sgpa).toFixed(2)}
+                          </p>
+                        </div>
 
-                          <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
-                            <p className="text-xs font-semibold text-gray-500">REG. CRED</p>
-                            <p className="text-lg font-bold text-gray-900">
-                              {sessionGroup.totalRegisteredCredits.toFixed(2)}
-                            </p>
-                          </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
+                          <p className="text-xs font-semibold text-gray-500">
+                            REG. CRED
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {sessionGroup.totalRegisteredCredits.toFixed(2)}
+                          </p>
+                        </div>
 
-                          <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
-                            <p className="text-xs font-semibold text-gray-500">EARN. CRED</p>
-                            <p className="text-lg font-bold text-gray-900">
-                              {sessionGroup.totalEarnedCredits.toFixed(2)}
-                            </p>
+                        <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
+                          <p className="text-xs font-semibold text-gray-500">
+                            EARN. CRED
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {sessionGroup.totalEarnedCredits.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
                     </div>
 
                     {/* Courses Table */}
@@ -432,12 +470,12 @@ function StudentRecordPage() {
                             >
                               <td className="px-4 py-3 text-sm">{idx + 1}</td>
                               <td className="px-4 py-3 font-semibold text-black-600">
-                                {credit.enrollment?.course_offering?.course?.code ||
-                                  "N/A"}
+                                {credit.enrollment?.course_offering?.course
+                                  ?.code || "N/A"}
                               </td>
                               <td className="px-4 py-3 text-sm">
-                                {credit.enrollment?.course_offering?.course?.title ||
-                                  "N/A"}
+                                {credit.enrollment?.course_offering?.course
+                                  ?.title || "N/A"}
                               </td>
                               <td className="px-4 py-3 text-sm">
                                 {credit.cred_registered || "N/A"}

@@ -1,5 +1,5 @@
 import { LogOut, Menu, X } from "lucide-react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import { useEffect, useState } from "react";
 
@@ -8,6 +8,8 @@ function Navbar() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -19,9 +21,18 @@ function Navbar() {
     navigate("/", { replace: true });
   };
 
+  // ✅ Your normal active class
   const navClass = ({ isActive }) =>
     `text-gray-700 font-medium transition-colors text-sm lg:text-base hover:text-black
    ${isActive ? "text-black underline underline-offset-8 decoration-2" : ""}`;
+
+  // ✅ My Work should be active when these routes are active
+  const isMyWorkActive =
+    location.pathname.startsWith("/my-offerings") ||
+    location.pathname.startsWith("/action-pending");
+
+  const myWorkClass = `text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base
+    ${isMyWorkActive ? "text-black underline underline-offset-8 decoration-2" : ""}`;
 
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -68,11 +79,10 @@ function Navbar() {
 
             {user?.role === "instructor" && (
               <>
+                {/* ✅ My Work Dropdown */}
                 <div className="dropdown dropdown-hover">
                   <NavLink
-                    to="#"
-                    className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-                  >
+                    to="/my-offerings" className={myWorkClass}>
                     My Work
                   </NavLink>
 
@@ -94,9 +104,10 @@ function Navbar() {
                   Browse Courses
                 </NavLink>
 
-                <NavLink to="/course-add" className={navClass}>
-                  Add Course
+                <NavLink to="/add-offering" className={navClass}>
+                  Offer a Course
                 </NavLink>
+
               </>
             )}
 
@@ -112,6 +123,10 @@ function Navbar() {
 
                 <NavLink to="/admin-alerts" className={navClass}>
                   Add Alert
+                </NavLink>
+              
+                <NavLink to="/course-add" className={navClass}>
+                  Add Course
                 </NavLink>
               </>
             )}
@@ -134,7 +149,11 @@ function Navbar() {
                 className="md:hidden btn btn-ghost btn-circle hover:bg-blue-100"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
               </button>
 
               {/* Profile Dropdown */}
@@ -162,7 +181,9 @@ function Navbar() {
                   </li>
 
                   <li className="menu-title">
-                    <span className="text-xs text-gray-500">{user?.email}</span>
+                    <span className="text-xs text-gray-500 truncate w-44 block">
+                      {user?.email}
+                    </span>
                   </li>
 
                   <li>

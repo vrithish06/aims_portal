@@ -1,225 +1,3 @@
-create table public.cgpa_table (
-  id serial not null,
-  student_id integer not null,
-  cg numeric(4, 2) null,
-  sg numeric(4, 2) null,
-  semester integer not null,
-  session character varying not null,
-  constraint cgpa_table_pkey primary key (id),
-  constraint cgpa_table_student_semester_session_key unique (student_id, semester, session),
-  constraint cgpa_table_student_id_fkey foreign KEY (student_id) references student (student_id) on delete CASCADE,
-  constraint cgpa_cg_check check (
-    (
-      (cg >= (0)::numeric)
-      and (cg <= (10)::numeric)
-    )
-  ),
-  constraint cgpa_sg_check check (
-    (
-      (sg >= (0)::numeric)
-      and (sg <= (10)::numeric)
-    )
-  )
-) TABLESPACE pg_default;
-
-create index IF not exists idx_cgpa_student on public.cgpa_table using btree (student_id) TABLESPACE pg_default;
-
-create index IF not exists idx_cgpa_session on public.cgpa_table using btree (session) TABLESPACE pg_default;
-
-
-create table public.course (
-  course_id serial not null,
-  is_deleted boolean null default false,
-  code character varying(20) not null,
-  title character varying(255) not null,
-  ltp character varying(10) null,
-  status character varying(20) null,
-  author_id integer null,
-  has_lab boolean null default false,
-  pre_req text[] null,
-  constraint course_pkey primary key (course_id),
-  constraint course_code_key unique (code),
-  constraint course_author_id_fkey foreign KEY (author_id) references instructor (instructor_id) on delete set null,
-  constraint course_status_check check (
-    (
-      (status)::text = any (
-        (
-          array[
-            'active'::character varying,
-            'inactive'::character varying,
-            'archived'::character varying
-          ]
-        )::text[]
-      )
-    )
-  )
-) TABLESPACE pg_default;
-
-create index IF not exists idx_course_code on public.course using btree (code) TABLESPACE pg_default;
-
-create table public.course_enrollment (
-  enrollment_id serial not null,
-  offering_id integer not null,
-  is_deleted boolean null default false,
-  student_id integer not null,
-  enrol_type character varying(20) null,
-  enrol_status character varying(20) null,
-  grade character varying(5) null,
-  constraint course_enrollment_pkey primary key (enrollment_id),
-  constraint course_enrollment_offering_id_student_id_key unique (offering_id, student_id),
-  constraint course_enrollment_offering_id_fkey foreign KEY (offering_id) references course_offering (offering_id) on delete CASCADE,
-  constraint course_enrollment_student_id_fkey foreign KEY (student_id) references student (student_id) on delete CASCADE,
-  constraint course_enrollment_enrol_status_check check (
-    (
-      (enrol_status)::text = any (
-        (
-          array[
-            'enrolled'::character varying,
-            'pending instructor approval'::character varying,
-            'pending advisor approval'::character varying,
-            'instructor rejected'::character varying,
-            'advisor rejected'::character varying,
-            'student dropped'::character varying,
-            'student withdrawn'::character varying
-          ]
-        )::text[]
-      )
-    )
-  ),
-  constraint course_enrollment_enrol_type_check check (
-    (
-      (enrol_type)::text = any (
-        (
-          array[
-            'Credit'::character varying,
-            'Credit for Minor'::character varying,
-            'Credit for Concentration'::character varying,
-            'Credit for Audit'::character varying
-          ]
-        )::text[]
-      )
-    )
-  )
-) TABLESPACE pg_default;
-
-create index IF not exists idx_enrollment_student on public.course_enrollment using btree (student_id) TABLESPACE pg_default;
-
-create index IF not exists idx_enrollment_offering on public.course_enrollment using btree (offering_id) TABLESPACE pg_default;
-
-create trigger trigger_course_enrollment_credited
-after INSERT
-or
-update on course_enrollment for EACH row
-execute FUNCTION add_student_credit_on_credit ();
-
-create table public.course_offering (
-  offering_id serial not null,
-  course_id integer not null,
-  is_deleted boolean null default false,
-  degree character varying(50) null,
-  dept_name character varying(100) null,
-  acad_session character varying(20) null,
-  status character varying(20) null,
-  slot character varying(20) null,
-  section character varying(10) null,
-  instructor_id integer null,
-  is_coordinator boolean null default false,
-  constraint course_offering_pkey primary key (offering_id),
-  constraint course_offering_course_id_fkey foreign KEY (course_id) references course (course_id) on delete CASCADE,
-  constraint course_offering_instructor_id_fkey foreign KEY (instructor_id) references instructor (instructor_id) on delete set null,
-  constraint course_offering_status_check check (
-    (
-      (status)::text = any (
-        (
-          array[
-            'Running'::character varying,
-            'Enrolling'::character varying,
-            'Completed'::character varying,
-            'Declined'::character varying,
-            'Proposed'::character varying,
-            'Canceled'::character varying
-          ]
-        )::text[]
-      )
-    )
-  )
-) TABLESPACE pg_default;
-
-create index IF not exists idx_course_offering_session on public.course_offering using btree (acad_session) TABLESPACE pg_default;
-
-create table public.faculty_advisor (
-  advisor_id serial not null,
-  instructor_id integer not null,
-  for_degree character varying(50) null,
-  batch character varying(10) null,
-  is_deleted boolean null default false,
-  constraint faculty_advisor_pkey primary key (advisor_id),
-  constraint faculty_advisor_instructor_id_fkey foreign KEY (instructor_id) references instructor (instructor_id) on delete CASCADE
-) TABLESPACE pg_default;
-
-create table public.instructor (
-  instructor_id serial not null,
-  user_id bigint not null,
-  branch character varying(100) null,
-  year_joined integer null,
-  constraint instructor_pkey primary key (instructor_id),
-  constraint instructor_user_id_key unique (user_id),
-  constraint instructor_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE
-) TABLESPACE pg_default;
-
-create index IF not exists idx_instructor_user_id on public.instructor using btree (user_id) TABLESPACE pg_default;
-
-create table public.sessions (
-  sid character varying not null,
-  sess json not null,
-  expire timestamp without time zone not null,
-  constraint session_pkey primary key (sid)
-) TABLESPACE pg_default;
-
-create index IF not exists idx_session_expire on public.sessions using btree (expire) TABLESPACE pg_default;
-
-create index IF not exists idx_session_sid on public.sessions using btree (sid) TABLESPACE pg_default;
-
-create table public.student (
-  student_id serial not null,
-  user_id bigint not null,
-  email character varying(255) not null,
-  branch character varying(100) null,
-  cgpa numeric(4, 2) null default 0.00,
-  total_credits_completed integer null default 0,
-  degree character varying(50) null,
-  constraint student_pkey primary key (student_id),
-  constraint student_email_key unique (email),
-  constraint student_user_id_key unique (user_id),
-  constraint student_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE
-) TABLESPACE pg_default;
-
-create index IF not exists idx_student_user_id on public.student using btree (user_id) TABLESPACE pg_default;
-
-create table public.student_credit (
-  credit_id serial not null,
-  is_deleted boolean null default false,
-  student_id integer not null,
-  acad_session character varying(20) not null,
-  cred_earned integer null default 0,
-  cred_registered integer null default 0,
-  cred_earned_total integer null default 0,
-  enrol_id integer null,
-  grade character varying null,
-  constraint student_credit_pkey primary key (credit_id),
-  constraint student_credit_student_id_acad_session_key unique (student_id, acad_session),
-  constraint student_credit_enrol_id_fkey foreign KEY (enrol_id) references course_enrollment (enrollment_id) on update CASCADE on delete CASCADE,
-  constraint student_credit_student_id_fkey foreign KEY (student_id) references student (student_id) on delete CASCADE
-) TABLESPACE pg_default;
-
-create index IF not exists idx_student_credit_session on public.student_credit using btree (student_id, acad_session) TABLESPACE pg_default;
-
-create trigger trigger_update_student_cgpa
-after INSERT
-or
-update on student_credit for EACH row
-execute FUNCTION update_student_cgpa ();
-
 create table public.users (
   id bigserial not null,
   email character varying(255) not null,
@@ -280,3 +58,228 @@ create trigger trigger_update_users_timestamp BEFORE
 update on users for EACH row
 execute FUNCTION update_timestamp ();
 
+create table public.student (
+  student_id serial not null,
+  user_id bigint not null,
+  email character varying(255) not null,
+  branch character varying(100) null,
+  cgpa numeric(4, 2) null default 0.00,
+  total_credits_completed integer null default 0,
+  degree character varying(50) null,
+  batch bigint null,
+  constraint student_pkey primary key (student_id),
+  constraint student_email_key unique (email),
+  constraint student_user_id_key unique (user_id),
+  constraint student_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_student_user_id on public.student using btree (user_id) TABLESPACE pg_default;
+create table public.student_credit (
+  credit_id serial not null,
+  is_deleted boolean null default false,
+  student_id integer not null,
+  acad_session character varying(20) not null,
+  cred_earned numeric(4, 2) null default 0,
+  cred_registered numeric(4, 2) null default 0,
+  cred_earned_total numeric(6, 2) null default 0,
+  enrol_id integer null,
+  grade character varying null,
+  constraint student_credit_pkey primary key (credit_id),
+  constraint student_credit_enrol_id_fkey foreign KEY (enrol_id) references course_enrollment (enrollment_id) on update CASCADE on delete CASCADE,
+  constraint student_credit_student_id_fkey foreign KEY (student_id) references student (student_id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_student_credit_session on public.student_credit using btree (student_id, acad_session) TABLESPACE pg_default;
+create table public.sessions (
+  sid character varying not null,
+  sess json not null,
+  expire timestamp without time zone not null,
+  constraint session_pkey primary key (sid)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_session_expire on public.sessions using btree (expire) TABLESPACE pg_default;
+
+create index IF not exists idx_session_sid on public.sessions using btree (sid) TABLESPACE pg_default;
+
+create table public.instructor (
+  instructor_id serial not null,
+  user_id bigint not null,
+  branch character varying(100) null,
+  year_joined integer null,
+  is_deleted boolean null default false,
+  constraint instructor_pkey primary key (instructor_id),
+  constraint instructor_user_id_key unique (user_id),
+  constraint instructor_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_instructor_user_id on public.instructor using btree (user_id) TABLESPACE pg_default;
+create table public.faculty_advisor (
+  advisor_id serial not null,
+  instructor_id integer not null,
+  for_degree character varying(50) null,
+  batch character varying(10) null,
+  is_deleted boolean null default false,
+  constraint faculty_advisor_pkey primary key (advisor_id),
+  constraint faculty_advisor_instructor_id_fkey foreign KEY (instructor_id) references instructor (instructor_id) on delete CASCADE
+) TABLESPACE pg_default;create table public.course (
+  course_id serial not null,
+  is_deleted boolean null default false,
+  code character varying(20) not null,
+  title character varying(255) not null,
+  ltp character varying(10) null,
+  status character varying(20) null,
+  author_id integer null,
+  has_lab boolean null default false,
+  pre_req text[] null,
+  constraint course_pkey primary key (course_id),
+  constraint course_code_key unique (code),
+  constraint course_author_id_fkey foreign KEY (author_id) references users (id) on delete set null,
+  constraint course_status_check check (
+    (
+      (status)::text = any (
+        (
+          array[
+            'active'::character varying,
+            'inactive'::character varying,
+            'archived'::character varying
+          ]
+        )::text[]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_course_code on public.course using btree (code) TABLESPACE pg_default;
+
+create table public.course_offering (
+  offering_id serial not null,
+  course_id integer not null,
+  is_deleted boolean null default false,
+  acad_session character varying(20) null,
+  status character varying(20) null,
+  slot character varying(20) null,
+  section character varying(10) null,
+  targets jsonb null default '[]'::jsonb,
+  constraint course_offering_pkey primary key (offering_id),
+  constraint offering_session_course_unique unique (acad_session, course_id),
+  constraint course_offering_course_id_fkey foreign KEY (course_id) references course (course_id) on delete CASCADE,
+  constraint course_offering_status_check check (
+    (
+      (status)::text = any (
+        (
+          array[
+            'Running'::character varying,
+            'Enrolling'::character varying,
+            'Completed'::character varying,
+            'Declined'::character varying,
+            'Proposed'::character varying,
+            'Canceled'::character varying
+          ]
+        )::text[]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_course_offering_session on public.course_offering using btree (acad_session) TABLESPACE pg_default;
+
+create trigger trg_cancel_offering_reject_enrollments
+after
+update OF status on course_offering for EACH row
+execute FUNCTION cancel_offering_reject_enrollments ();
+create table public.course_offering_instructor (
+  id serial not null,
+  offering_id integer not null,
+  instructor_id integer not null,
+  is_coordinator boolean null default false,
+  constraint course_offering_instructor_pkey primary key (id),
+  constraint unique_offering_instructor unique (offering_id, instructor_id),
+  constraint coi_instructor_fkey foreign KEY (instructor_id) references instructor (instructor_id) on delete CASCADE,
+  constraint coi_offering_fkey foreign KEY (offering_id) references course_offering (offering_id) on delete CASCADE
+) TABLESPACE pg_default;
+create table public.course_enrollment (
+  enrollment_id serial not null,
+  offering_id integer not null,
+  is_deleted boolean null default false,
+  student_id integer not null,
+  enrol_type character varying(50) null,
+  enrol_status character varying(50) null default 'pending instructor approval'::character varying,
+  grade character varying(5) null,
+  constraint course_enrollment_pkey primary key (enrollment_id),
+  constraint course_enrollment_offering_id_student_id_key unique (offering_id, student_id),
+  constraint course_enrollment_offering_id_fkey foreign KEY (offering_id) references course_offering (offering_id) on delete CASCADE,
+  constraint course_enrollment_student_id_fkey foreign KEY (student_id) references student (student_id) on delete CASCADE,
+  constraint course_enrollment_enrol_status_check check (
+    (
+      (enrol_status)::text = any (
+        array[
+          'enrolled'::text,
+          'pending instructor approval'::text,
+          'pending advisor approval'::text,
+          'instructor rejected'::text,
+          'advisor rejected'::text,
+          'student dropped'::text,
+          'student withdrawn'::text,
+          'course canceled'::text
+        ]
+      )
+    )
+  ),
+  constraint course_enrollment_enrol_type_check check (
+    (
+      (enrol_type)::text = any (
+        array[
+          ('Credit'::character varying)::text,
+          ('Credit for Minor'::character varying)::text,
+          ('Credit for Concentration'::character varying)::text,
+          ('Credit for Audit'::character varying)::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_enrollment_student on public.course_enrollment using btree (student_id) TABLESPACE pg_default;
+
+create index IF not exists idx_enrollment_offering on public.course_enrollment using btree (offering_id) TABLESPACE pg_default;
+
+create trigger trg_check_max_credits BEFORE INSERT
+or
+update OF offering_id,
+student_id,
+enrol_type,
+enrol_status,
+is_deleted on course_enrollment for EACH row
+execute FUNCTION check_max_credits_per_session ();
+
+create trigger trigger_sync_grade_to_student_credit
+after
+update OF grade on course_enrollment for EACH row when (old.grade::text is distinct from new.grade::text)
+execute FUNCTION sync_grade_to_student_credit ();
+create table public.cgpa_table (
+  id serial not null,
+  student_id integer not null,
+  cg numeric(4, 2) null,
+  sg numeric(4, 2) null,
+  semester integer not null,
+  session character varying not null,
+  constraint cgpa_table_pkey primary key (id),
+  constraint cgpa_table_student_semester_session_key unique (student_id, semester, session),
+  constraint cgpa_table_student_id_fkey foreign KEY (student_id) references student (student_id) on delete CASCADE,
+  constraint cgpa_cg_check check (
+    (
+      (cg >= (0)::numeric)
+      and (cg <= (10)::numeric)
+    )
+  ),
+  constraint cgpa_sg_check check (
+    (
+      (sg >= (0)::numeric)
+      and (sg <= (10)::numeric)
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_cgpa_student on public.cgpa_table using btree (student_id) TABLESPACE pg_default;
+
+create index IF not exists idx_cgpa_session on public.cgpa_table using btree (session) TABLESPACE pg_default;
