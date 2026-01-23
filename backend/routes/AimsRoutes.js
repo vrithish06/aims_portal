@@ -1,7 +1,7 @@
 import express from 'express';
 import supabase from '../config/db.js';
 import bcrypt from 'bcrypt';
-import { 
+import {
   getHelp,
   createUser,
   createCourse,
@@ -31,7 +31,10 @@ import {
   dropCourse,
   cancelCourseOffering,
   getPendingInstructorEnrollments,
-  getPendingAdvisorEnrollments
+  getPendingAdvisorEnrollments,
+  getAlerts,
+  createAlert,
+  deleteAlert
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -53,7 +56,7 @@ router.get('/check-user/:email', async (req, res) => {
   try {
     const { email } = req.params;
     console.log(`[DEBUG] Checking user: ${email}`);
-    
+
     const { data, error } = await supabase
       .from("users")
       .select("id, email, first_name, last_name, role")
@@ -221,19 +224,19 @@ router.post('/offering/:offeringId/cancel', requireAuth, requireRole('instructor
 router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), async (req, res) => {
   try {
     const { email, plainPassword } = req.params;
-    
+
     console.log(`[ADMIN] Fixing password for: ${email}`);
-    
+
     // Hash the plain password
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
-    
+
     // Update in database
     const { data, error } = await supabase
       .from('users')
       .update({ password_hashed: hashedPassword })
       .eq('email', email)
       .select();
-    
+
     if (error) {
       console.error('[ADMIN] Error updating password:', error);
       return res.status(500).json({
@@ -241,7 +244,7 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
         message: error.message
       });
     }
-    
+
     console.log(`[ADMIN] Password fixed for: ${email}`);
     res.status(200).json({
       success: true,
@@ -256,5 +259,10 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
     });
   }
 });
+
+// --- ALERT ROUTES ---
+router.get('/alerts', getAlerts); // Public read
+router.post('/alerts', requireAuth, requireRole('admin'), createAlert); // Admin create
+router.delete('/alerts/:id', requireAuth, requireRole('admin'), deleteAlert); // Admin delete
 
 export default router;

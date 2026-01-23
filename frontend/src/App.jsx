@@ -12,6 +12,8 @@ import MyOfferingsPage from "./pages/MyOfferingsPage";
 import AddUserPage from "./pages/AddUserPage";
 import ActionPendingPage from "./pages/ActionPendingPage";
 import AdvisorActionsPage from "./pages/AdvisorActionsPage";
+import AdminAlertsPage from "./pages/AdminAlertsPage";
+import AlertsPage from "./pages/AlertsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
 import useAuthStore from "./store/authStore";
@@ -46,6 +48,8 @@ function App() {
         <Route path="/action-pending/:offeringId" element={<ProtectedRoute><ActionPendingPage /></ProtectedRoute>} />
         <Route path="/advisor-actions" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
         <Route path="/advisor-actions/:offeringId" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
+        <Route path="/admin-alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
+        <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
         <Route path="/add-user" element={<ProtectedRoute><AddUserPage /></ProtectedRoute>} />
         <Route path="/product/:id" element={<ProductPage />} />
       </Routes>

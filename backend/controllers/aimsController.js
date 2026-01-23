@@ -8,7 +8,7 @@ export const requireAuth = (req, res, next) => {
   console.log(`[AUTH-CHECK] User in session: ${!!req.session?.user}`);
   console.log(`[AUTH-CHECK] User email: ${req.session?.user?.email || 'none'}`);
   console.log(`[AUTH-CHECK] Full session data:`, JSON.stringify(req.session, null, 2));
-  
+
   if (!req.session || !req.session.user) {
     console.log(`[AUTH-CHECK] ❌ FAILED - No user in session`);
     return res.status(401).json({
@@ -16,7 +16,7 @@ export const requireAuth = (req, res, next) => {
       message: 'Authentication required'
     });
   }
-  
+
   // Attach user to request object for use in controllers
   req.user = req.session.user;
   console.log(`[AUTH-CHECK] ✅ SUCCESS - User authenticated:`, req.user.email);
@@ -182,10 +182,10 @@ export const createInstructor = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("instructor")
-      .insert({ 
-        user_id, 
-        branch, 
-        year_joined 
+      .insert({
+        user_id,
+        branch,
+        year_joined
       })
       .select()
       .single();
@@ -309,7 +309,7 @@ export const updateStudent = async (req, res) => {
   // Use session identity for updates
   const user_id = req.user?.user_id;
   const { branch, cgpa, total_credits_completed, degree } = req.body;
-  
+
   try {
     const { data, error } = await supabase
       .from("student")
@@ -406,46 +406,46 @@ export const createOffering = async (req, res) => {
   // Instructor identity must come from session; courseId comes from URL
   const userId = req.user?.user_id;
   const { courseId } = req.params;
-  try{
-  const {
-    degree,
-    dept_name,
-    acad_session,
-    status,
-    slot,
-    section,
-    is_coordinator
-  } = req.body;
+  try {
+    const {
+      degree,
+      dept_name,
+      acad_session,
+      status,
+      slot,
+      section,
+      is_coordinator
+    } = req.body;
 
-  // Get instructor_id from user_id
-  const { data: instructorData, error: instructorError } = await supabase
-    .from("instructor")
-    .select("instructor_id")
-    .eq('user_id', userId)
-    .single();
+    // Get instructor_id from user_id
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', userId)
+      .single();
 
-  if (instructorError || !instructorData) {
-    return res.status(404).json({
-      success: false,
-      message: "Instructor record not found"
-    });
-  }
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
 
-  const {data , error} = await supabase
-    .from("course_offering")
-    .insert({
-      course_id: parseInt(courseId),
-      degree: degree,
-      dept_name: dept_name,
-      acad_session: acad_session,
-      status: status,
-      slot: slot,
-      section: section,
-      instructor_id: instructorData.instructor_id,
-      is_coordinator: is_coordinator || false
-    })
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from("course_offering")
+      .insert({
+        course_id: parseInt(courseId),
+        degree: degree,
+        dept_name: dept_name,
+        acad_session: acad_session,
+        status: status,
+        slot: slot,
+        section: section,
+        instructor_id: instructorData.instructor_id,
+        is_coordinator: is_coordinator || false
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error("createOffering error:", error);
@@ -1640,3 +1640,74 @@ export const getPendingInstructorEnrollments = async (req, res) => {
 };
 
 
+
+// --- ALERTS CONTROLLER ---
+
+// Get all alerts (Public)
+export const getAlerts = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error('getAlerts error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Create an alert (Admin only)
+export const createAlert = async (req, res) => {
+  try {
+    const { content } = req.body;
+    const adminId = req.user.user_id; // from session
+
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content is required' });
+    }
+
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert([{ content, admin_id: adminId }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({ success: true, data });
+  } catch (err) {
+    console.error('createAlert error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Delete an alert (Admin only)
+export const deleteAlert = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.user_id;
+
+    // Delete only if id matches AND admin_id matches (ownership check)
+    const { data, error } = await supabase
+      .from('alerts')
+      .delete()
+      .eq('id', id)
+      .eq('admin_id', adminId)
+      .select();
+
+    if (error) throw error;
+
+    if (data.length === 0) {
+      return res.status(404).json({ success: false, message: "Alert not found or you don't have permission to delete it" });
+    }
+
+    return res.status(200).json({ success: true, message: 'Alert deleted' });
+  } catch (err) {
+    console.error('deleteAlert error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

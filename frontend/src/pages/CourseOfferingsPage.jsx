@@ -14,7 +14,8 @@ import {
   Clock,
   BookOpen,
   Users,
-  GraduationCap
+  GraduationCap,
+  AlertCircle
 } from 'lucide-react';
 
 function CourseOfferingsPage() {
@@ -28,6 +29,7 @@ function CourseOfferingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(null);
+  const [slashWarning, setSlashWarning] = useState({ show: false, offering: null, enrollType: null });
   
   // Filter States
   const [tempFilters, setTempFilters] = useState({
@@ -115,12 +117,33 @@ function CourseOfferingsPage() {
     }
   };
 
+  const checkSlotClash = (offering) => {
+    return enrolledCourses.some(
+      c => c.course_offering?.slot === offering.slot && 
+           c.course_offering?.acad_session === offering.acad_session
+    );
+  };
+
   const handleEnroll = async (offeringId, enrollType = 'Credit') => {
     if (!user?.user_id) {
       toast.error('Please login first');
       return;
     }
 
+    const offering = offerings.find(o => o.offering_id === offeringId);
+    
+    // Check for slot clash
+    if (checkSlotClash(offering)) {
+      setSlashWarning({ show: true, offering, enrollType });
+      setOpenDropdown(null);
+      return;
+    }
+
+    // Proceed with enrollment
+    await proceedWithEnrollment(offeringId, enrollType);
+  };
+
+  const proceedWithEnrollment = async (offeringId, enrollType = 'Credit') => {
     try {
       setEnrolling(offeringId);
       const response = await axiosClient.post(
@@ -466,7 +489,17 @@ function CourseOfferingsPage() {
                           <Clock className="w-4 h-4 text-orange-500" />
                           <div className="flex flex-col">
                             <span className="text-[10px] text-gray-400 font-bold uppercase">Slot</span>
-                            <span className="text-sm font-bold text-gray-700">{offering.slot}</span>
+                            {(() => {
+                              const isClashing = enrolledCourses.some(
+                                c => c.course_offering?.slot === offering.slot && 
+                                     c.course_offering?.acad_session === offering.acad_session
+                              );
+                              return (
+                                <span className={`text-sm font-bold ${isClashing ? 'text-red-600' : 'text-green-600'}`}>
+                                  {offering.slot}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2">
@@ -598,6 +631,45 @@ function CourseOfferingsPage() {
           )}
         </div>
       </div>
+
+      {/* Slot Clash Warning Modal */}
+      {slashWarning.show && slashWarning.offering && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Timetable Clash Warning</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  You are already enrolled in a course with slot <span className="font-bold text-red-600">{slashWarning.offering.slot}</span> in session <span className="font-bold">{slashWarning.offering.acad_session}</span>.
+                </p>
+                <p className="text-sm text-gray-600 mt-2">
+                  Enrolling in this course will create a timetable clash. Do you want to continue?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setSlashWarning({ show: false, offering: null, enrollType: null })}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setSlashWarning({ show: false, offering: null, enrollType: null });
+                  proceedWithEnrollment(slashWarning.offering.offering_id, slashWarning.enrollType);
+                }}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+              >
+                Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

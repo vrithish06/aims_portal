@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
-import { 
-  LogOut, 
-  HelpCircle, 
-  X, 
-  BookOpen, 
-  Search, 
-  GraduationCap, 
+import {
+  LogOut,
+  HelpCircle,
+  X,
+  BookOpen,
+  Search,
+  GraduationCap,
   LayoutDashboard,
   ArrowRight,
-  UserCircle
+  UserCircle,
+  Megaphone,
+  Bell
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import LoginPage from './LoginPage';
@@ -46,6 +48,31 @@ function HomePage() {
 
   const [helpLoading, setHelpLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [latestAlert, setLatestAlert] = useState(null);
+
+  useEffect(() => {
+    const fetchAlert = async () => {
+      try {
+        const response = await axiosClient.get('/alerts');
+        const alerts = response.data?.data;
+        if (alerts && alerts.length > 0) {
+          // The backend returns order('created_at', { ascending: false })
+          // so the first one is the latest
+          setLatestAlert(alerts[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching alert:', error);
+      }
+    };
+
+    fetchAlert();
+
+    // Note: We removed the realtime subscription because the Supabase client
+    // is configured incorrectly for RLS on the frontend.
+    // We can use a polling interval instead if real-time updates are critical,
+    // or just fetch once on load. For now, fetch on load is sufficient.
+
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -107,6 +134,17 @@ function HomePage() {
       });
     }
 
+
+    if (user?.role === 'admin') {
+      actions.push({
+        title: 'Academic Alerts',
+        desc: 'Post updates for everyone',
+        icon: <Megaphone className="w-6 h-6 text-orange-600" />,
+        onClick: () => navigate('/admin-alerts'),
+        color: 'bg-orange-50 hover:bg-orange-100',
+      });
+    }
+
     return actions;
   };
 
@@ -119,9 +157,9 @@ function HomePage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-12 relative z-10">
-        
+
         {/* Header Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -138,6 +176,10 @@ function HomePage() {
           </p>
         </motion.div>
 
+
+
+
+
         {/* Main Content Area */}
         <motion.div
           variants={containerVariants}
@@ -146,8 +188,42 @@ function HomePage() {
           className="w-full"
         >
           {isAuthenticated && user ? (
-            /* --- LOGGED IN VIEW --- */
             <div className="grid gap-8">
+              {/* Alert Banner */}
+              <AnimatePresence>
+                {latestAlert && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden cursor-pointer"
+                    onClick={() => navigate('/alerts')}
+                  >
+                    <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-1 shadow-lg shadow-orange-200/50 hover:scale-[1.01] transition-transform duration-200">
+                      <div className="bg-white rounded-xl p-4 flex items-start gap-4">
+                        <div className="p-3 bg-orange-100 rounded-full shrink-0 animate-pulse">
+                          <Bell className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div className="flex-1 pt-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-orange-900 font-bold text-sm uppercase tracking-wide">
+                              Latest Announcement
+                            </h3>
+                            <span className="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">Click to view all</span>
+                          </div>
+                          <p className="text-gray-800 font-medium leading-relaxed line-clamp-2">
+                            {latestAlert.content}
+                          </p>
+                          <p className="text-gray-400 text-xs mt-2">
+                            Posted {new Date(latestAlert.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Welcome Card */}
               <motion.div variants={itemVariants} className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
                 <div className="p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -167,9 +243,9 @@ function HomePage() {
                       </div>
                     </div>
                   </div>
-                  
-                  <button 
-                    onClick={handleLogout} 
+
+                  <button
+                    onClick={handleLogout}
                     className="px-6 py-3 rounded-xl bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 group"
                   >
                     <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
@@ -180,7 +256,7 @@ function HomePage() {
 
               {/* Dashboard Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
+
                 {/* Dynamic Role Actions */}
                 {getDashboardActions().map((action, idx) => (
                   <motion.div
@@ -229,10 +305,9 @@ function HomePage() {
               </div>
             </div>
           ) : (
-            /* --- LOGGED OUT VIEW --- */
             <div className="max-w-4xl mx-auto">
               {/* Hero Banner */}
-              <motion.div 
+              <motion.div
                 variants={itemVariants}
                 className="bg-white rounded-3xl shadow-xl overflow-hidden mb-12 flex flex-col md:flex-row"
               >
@@ -276,10 +351,10 @@ function HomePage() {
             </div>
           )}
         </motion.div>
-      </div>
+      </div >
 
       {/* --- ANIMATED LOGIN MODAL --- */}
-      <AnimatePresence>
+      < AnimatePresence >
         {showLogin && !isAuthenticated && (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4"
@@ -300,13 +375,14 @@ function HomePage() {
               >
                 <X className="w-6 h-6 text-gray-500" />
               </button>
-              
+
               <LoginPage insideModal />
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        )
+        }
+      </AnimatePresence >
+    </div >
   );
 }
 

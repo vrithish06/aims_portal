@@ -20,15 +20,15 @@ function Navbar() {
   };
 
   const navClass = ({ isActive }) =>
-  `text-gray-700 font-medium transition-colors text-sm lg:text-base hover:text-black
+    `text-gray-700 font-medium transition-colors text-sm lg:text-base hover:text-black
    ${isActive ? "text-black underline underline-offset-8 decoration-2" : ""}`;
 
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="navbar px-2 sm:px-4 min-h-[4rem] justify-between">
+      <div className="navbar px-2 sm:px-4 min-h-[4rem]">
 
         {/* LOGO */}
-        <div className="flex-1">
+        <div className="flex-none">
           <Link to="/" className="hover:opacity-80 transition-opacity">
             <div className="flex items-center gap-2 sm:gap-3">
               <img
@@ -45,7 +45,7 @@ function Navbar() {
 
         {/* Desktop Navigation Links */}
         {isAuthenticated && (
-          <div className="hidden md:flex gap-4 lg:gap-8 items-center">
+          <div className="hidden md:flex gap-4 lg:gap-8 items-center ml-12">
             <NavLink to="/" className={navClass}>
               Dashboard
             </NavLink>
@@ -69,34 +69,34 @@ function Navbar() {
             {user?.role === "instructor" && (
               <>
                 <div className="dropdown dropdown-hover">
-              <NavLink
-                to="#"
-                className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
-              >
-                My Work
-              </NavLink>
-
-              <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-                <li>
-                  <NavLink to="/my-offerings" className={navClass}>
-                    My Offerings
+                  <NavLink
+                    to="#"
+                    className="text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base"
+                  >
+                    My Work
                   </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/action-pending" className={navClass}>
-                    Action Pending
-                  </NavLink>
-                </li>
-              </ul>
-            </div>
 
-            <NavLink to="/course-offerings" className={navClass}>
-              Browse Courses
-            </NavLink>
+                  <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                    <li>
+                      <NavLink to="/my-offerings" className={navClass}>
+                        My Offerings
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/action-pending" className={navClass}>
+                        Action Pending
+                      </NavLink>
+                    </li>
+                  </ul>
+                </div>
 
-            <NavLink to="/course-add" className={navClass}>
-              Add Course
-            </NavLink>
+                <NavLink to="/course-offerings" className={navClass}>
+                  Browse Courses
+                </NavLink>
+
+                <NavLink to="/course-add" className={navClass}>
+                  Add Course
+                </NavLink>
               </>
             )}
 
@@ -109,10 +109,21 @@ function Navbar() {
                 <NavLink to="/add-user" className={navClass}>
                   Add User
                 </NavLink>
+
+                <NavLink to="/admin-alerts" className={navClass}>
+                  Add Alert
+                </NavLink>
               </>
             )}
+
+            <NavLink to="/alerts" className={navClass}>
+              Alerts
+            </NavLink>
           </div>
         )}
+
+        {/* Spacer to push profile to right */}
+        <div className="flex-1"></div>
 
         {/* Right side actions */}
         <div className="flex-none gap-2 sm:gap-3 pl-2 sm:pl-4">
@@ -200,8 +211,15 @@ function Navbar() {
                       <li>
                         <Link to="/add-user">Add User</Link>
                       </li>
+                      <li>
+                        <Link to="/admin-alerts">Add Alert</Link>
+                      </li>
                     </>
                   )}
+
+                  <li>
+                    <Link to="/alerts">Alerts</Link>
+                  </li>
 
                   <li>
                     <a onClick={handleLogout} className="text-error">
@@ -316,8 +334,24 @@ function Navbar() {
               >
                 Add User
               </Link>
+
+              <Link
+                to="/admin-alerts"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                Add Alert
+              </Link>
             </>
           )}
+
+          <Link
+            to="/alerts"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+          >
+            Alerts
+          </Link>
         </div>
       )}
     </div>
