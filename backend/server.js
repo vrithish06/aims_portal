@@ -88,6 +88,30 @@ if (isProduction && process.env.DATABASE_URL) {
   console.log("[SESSION] Using memory store (development only)");
 }
 
+// Helper function to extract parent domain for cookie sharing
+const getParentDomain = (url) => {
+  if (!url) return undefined;
+  const hostname = new URL(url).hostname;
+  
+  // For Render deployments (*.onrender.com), use .onrender.com so frontend can access cookies
+  if (hostname.includes('.onrender.com')) {
+    return '.onrender.com';
+  }
+  
+  // For localhost, don't set domain (let browser handle it)
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return undefined;
+  }
+  
+  // For other domains, extract parent domain (e.g., example.com from api.example.com)
+  const parts = hostname.split('.');
+  if (parts.length > 2) {
+    return '.' + parts.slice(-2).join('.');
+  }
+  
+  return hostname;
+};
+
 const sessionConfig = {
   name: "aims.sid",
   secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
@@ -100,8 +124,8 @@ const sessionConfig = {
     sameSite: isProduction ? "none" : "lax",
     maxAge: 24 * 60 * 60 * 1000,  // 1 day
     path: "/",
-    // For cross-site cookies, set domain explicitly in production
-    domain: isProduction ? (process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL).hostname : undefined) : undefined
+    // For cross-site cookies, set parent domain in production so frontend can access cookies
+    domain: isProduction ? getParentDomain(process.env.BACKEND_URL) : undefined
   }
 };
 
