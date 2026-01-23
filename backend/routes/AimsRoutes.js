@@ -129,20 +129,18 @@ router.get('/enrollments-all', async (req, res) => {
 router.post('/login', loginUser);
 router.post('/logout', requireAuth, async (req, res) => {
   try {
-    const sid = req.sessionID;
-    // Remove session row from DB if present
-    if (sid) {
-      const { error: delErr } = await supabase.from('sessions').delete().eq('sid', sid);
-      if (delErr) console.error('[LOGOUT] Error deleting session row:', delErr);
-    }
-
     req.session.destroy((err) => {
       if (err) {
         console.error('[LOGOUT] Error destroying session:', err);
         return res.status(500).json({ success: false, message: 'Could not log out' });
       }
-      // Clear cookie using server's session name
-      res.clearCookie(process.env.SESSION_COOKIE_NAME || 'aims.sid');
+      // Clear cookie
+      res.clearCookie('aims.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
       res.json({ success: true, message: 'Logged out successfully' });
     });
   } catch (err) {
@@ -150,6 +148,7 @@ router.post('/logout', requireAuth, async (req, res) => {
     return res.status(500).json({ success: false, message: 'Could not log out' });
   }
 });
+
 router.get('/me', requireAuth, (req, res) => {
   console.log('[/ME] Called - Session ID:', req.sessionID, 'User:', req.user?.email);
   res.json({ success: true, data: req.user });
@@ -258,12 +257,4 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
   }
 });
 
-router.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("aims.sid");
-    res.json({ success: true });
-  });
-});
-
 export default router;
-//kumarnaidu//tharun//"rithish"

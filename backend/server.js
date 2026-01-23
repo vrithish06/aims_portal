@@ -3,11 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import session from "express-session";
-import pgSession from "connect-pg-simple";
-import { Pool } from "pg";
 import dotenv from "dotenv";
 import path from "path";
-import fs from "fs";
 import { fileURLToPath } from "url";
 
 import AimsRoutes from "./routes/AimsRoutes.js";
@@ -67,72 +64,28 @@ const isProduction = process.env.NODE_ENV === "production";
 
 console.log("[SESSION] Mode:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
 
-// Setup PostgreSQL session store
-let sessionStore;
-if (isProduction && process.env.DATABASE_URL) {
-  // Production: Use PostgreSQL session store
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Required for Render PostgreSQL
-  });
-  
-  const PgSession = pgSession(session);
-  sessionStore = new PgSession({
-    pool,
-    tableName: "session"
-  });
-  
-  console.log("[SESSION] Using PostgreSQL session store");
-} else {
-  // Development: Use memory store (acceptable for local dev)
-  console.log("[SESSION] Using memory store (development only)");
-}
+// Always use memory store - no DATABASE_URL needed
+// Memory store is sufficient for session management
+console.log("[SESSION] Using memory store for session persistence");
 
-// Helper function to extract parent domain for cookie sharing
-const getParentDomain = (url) => {
-  if (!url) return undefined;
-  const hostname = new URL(url).hostname;
-  
-  // For Render deployments (*.onrender.com), use .onrender.com so frontend can access cookies
-  if (hostname.includes('.onrender.com')) {
-    return '.onrender.com';
-  }
-  
-  // For localhost, don't set domain (let browser handle it)
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return undefined;
-  }
-  
-  // For other domains, extract parent domain (e.g., example.com from api.example.com)
-  const parts = hostname.split('.');
-  if (parts.length > 2) {
-    return '.' + parts.slice(-2).join('.');
-  }
-  
-  return hostname;
-};
+// Note: Removed getParentDomain function - not needed with proper sameSite and proxy settings
 
 const sessionConfig = {
   name: "aims.sid",
   secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
-  resave: false,
-  saveUninitialized: false,
+  resave: true,  // ✅ Must resave to maintain session across requests
+  saveUninitialized: true,  // ✅ Must save new sessions to memory
   proxy: isProduction,  // Trust proxy headers on Render
+  rolling: true,  // ✅ Reset maxAge on every response (keeps session alive)
   cookie: {
     httpOnly: true,
     secure: isProduction,  // HTTPS on Render only
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: "lax",  // 'lax' works for both localhost and production
     maxAge: 24 * 60 * 60 * 1000,  // 1 day
-    path: "/",
-    // For cross-site cookies, set parent domain in production so frontend can access cookies
-    domain: isProduction ? getParentDomain(process.env.BACKEND_URL) : undefined
+    path: "/"
+    // DO NOT set domain - let browser handle it automatically
   }
 };
-
-// Add session store if available
-if (sessionStore) {
-  sessionConfig.store = sessionStore;
-}
 
 console.log("[SESSION] Cookie config:", {
   httpOnly: sessionConfig.cookie.httpOnly,
@@ -144,6 +97,19 @@ console.log("[SESSION] Cookie config:", {
 });
 
 app.use(session(sessionConfig));
+
+/* ========================================
+   SESSION DEBUG MIDDLEWARE
+======================================== */
+app.use((req, res, next) => {
+  console.log(`[SESSION-DEBUG] ${req.method} ${req.path}`);
+  console.log(`  - Session ID: ${req.sessionID}`);
+  console.log(`  - Has Session: ${!!req.session}`);
+  console.log(`  - Has User: ${!!req.session?.user}`);
+  console.log(`  - User Email: ${req.session?.user?.email || 'none'}`);
+  console.log(`  - Cookie: ${req.headers.cookie ? 'yes' : 'no'}`);
+  next();
+});
 
 /* ========================================
    ROUTES ONLY (Frontend is deployed separately)

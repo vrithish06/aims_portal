@@ -3,14 +3,23 @@ import bcrypt from "bcrypt";
 
 // Authentication middleware
 export const requireAuth = (req, res, next) => {
+  console.log(`[AUTH-CHECK] Session ID: ${req.sessionID}`);
+  console.log(`[AUTH-CHECK] Session exists: ${!!req.session}`);
+  console.log(`[AUTH-CHECK] User in session: ${!!req.session?.user}`);
+  console.log(`[AUTH-CHECK] User email: ${req.session?.user?.email || 'none'}`);
+  console.log(`[AUTH-CHECK] Full session data:`, JSON.stringify(req.session, null, 2));
+  
   if (!req.session || !req.session.user) {
+    console.log(`[AUTH-CHECK] ❌ FAILED - No user in session`);
     return res.status(401).json({
       success: false,
       message: 'Authentication required'
     });
   }
+  
   // Attach user to request object for use in controllers
   req.user = req.session.user;
+  console.log(`[AUTH-CHECK] ✅ SUCCESS - User authenticated:`, req.user.email);
   next();
 };
 
