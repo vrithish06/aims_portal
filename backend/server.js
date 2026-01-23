@@ -107,8 +107,8 @@ if (!sessionStore) {
 const sessionConfig = {
   name: "aims.sid",
   secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
-  resave: false,
-  saveUninitialized: false,
+  resave: true,  // ✅ MUST be true - saves session to DB on every request
+  saveUninitialized: true,  // ✅ MUST be true - saves new sessions immediately
   proxy: isProduction,  // Trust proxy headers on Render
   rolling: true,  // Reset maxAge on every response (keeps session alive)
   cookie: {
