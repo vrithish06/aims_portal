@@ -43,11 +43,15 @@ function StudentRecordPage() {
         throw new Error("Failed to fetch student info");
       }
 
-      // ✅ Fetch enrolled courses
+      // ✅ Fetch enrolled courses and filter by status
       const coursesRes = await axiosClient.get("/student/enrolled-courses");
 
       if (coursesRes.data?.success) {
-        setEnrolledCourses(coursesRes.data.data || []);
+        // Filter for 'enrolled' status only
+        const strictlyEnrolled = (coursesRes.data.data || []).filter(
+          (course) => course.enrol_status === 'enrolled'
+        );
+        setEnrolledCourses(strictlyEnrolled);
       } else {
         setEnrolledCourses([]);
       }
@@ -351,7 +355,7 @@ function StudentRecordPage() {
                 {/* Total Courses */}
                 <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                   <p className="text-xs font-semibold text-gray-500 tracking-wide">
-                    TOTAL COURSES
+                    TOTAL  ENROLLED COURSES
                   </p>
                   <p className="mt-2 text-3xl font-bold text-gray-900">
                     {enrolledCourses.length}
