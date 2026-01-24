@@ -573,22 +573,29 @@ function EnrolledCoursesPage() {
               </div>
 
               {/* Instructor Section */}
-              {selectedEnrollment.course_offering?.instructor?.users && (
-                <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl">
-                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-gray-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {selectedEnrollment.course_offering.instructor.users.first_name}{" "}
-                      {selectedEnrollment.course_offering.instructor.users.last_name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {selectedEnrollment.course_offering.instructor.users.email}
-                    </p>
-                  </div>
-                </div>
-              )}
+              {(() => {
+                const instructors = selectedEnrollment.course_offering?.course_offering_instructor || [];
+                const coordinator = instructors.find(i => i.is_coordinator);
+                if (coordinator?.instructor?.users) {
+                  return (
+                    <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {coordinator.instructor.users.first_name}{" "}
+                          {coordinator.instructor.users.last_name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {coordinator.instructor.users.email}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Detailed List */}
               <div className="pt-2">

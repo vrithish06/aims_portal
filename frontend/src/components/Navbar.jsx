@@ -114,7 +114,7 @@ function Navbar() {
             {user?.role === "admin" && (
               <>
                 <NavLink to="/course-offerings" className={navClass}>
-                  Courses
+                  Course Offerings
                 </NavLink>
 
                 <NavLink to="/add-user" className={navClass}>
@@ -127,6 +127,10 @@ function Navbar() {
               
                 <NavLink to="/course-add" className={navClass}>
                   Add Course
+                </NavLink>
+
+                <NavLink to="/add-advisor" className={navClass}>
+                  Add Advisor
                 </NavLink>
               </>
             )}

@@ -168,6 +168,41 @@ export const createCourse = async (req, res) => {
     });
   }
 };
+
+// Search courses by code
+export const searchCourses = async (req, res) => {
+  try {
+    const { code } = req.query;
+
+    if (!code || code.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Course code is required"
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("course")
+      .select("course_id, code, title, ltp, status")
+      .eq("is_deleted", false)
+      .ilike("code", `%${code}%`)
+      .limit(10);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+  } catch (err) {
+    console.error("searchCourses error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
 // Create instructor
 export const createInstructor = async (req, res) => {
   const { user_id, branch, year_joined } = req.body;
@@ -224,6 +259,38 @@ export const getInstructor = async (req, res) => {
     return res.status(200).json({ success: true, data });
   } catch (err) {
     return res.status(404).json({ success: false, message: "Instructor not found" });
+  }
+};
+
+// Get all instructors (for dropdown in AddOfferingPage)
+export const getAllInstructors = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("instructor")
+      .select(`
+        instructor_id,
+        user_id,
+        users:user_id (
+          id,
+          email,
+          first_name,
+          last_name
+        )
+      `)
+      .eq("is_deleted", false);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+  } catch (err) {
+    console.error("getAllInstructors error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
 
@@ -403,74 +470,6 @@ export const createEnrollment = async (req, res) => {
   }
 };
 
-//create course offering
-// export const createOffering = async (req, res) => {
-//   // Instructor identity must come from session; courseId comes from URL
-//   const userId = req.user?.user_id;
-//   const { courseId } = req.params;
-//   try{
-//   const {
-//     degree,
-//     dept_name,
-//     acad_session,
-//     status,
-//     slot,
-//     section,
-//     is_coordinator
-//   } = req.body;
-
-//   // Get instructor_id from user_id
-//   const { data: instructorData, error: instructorError } = await supabase
-//     .from("instructor")
-//     .select("instructor_id")
-//     .eq('user_id', userId)
-//     .single();
-
-//   if (instructorError || !instructorData) {
-//     return res.status(404).json({
-//       success: false,
-//       message: "Instructor record not found"
-//     });
-//   }
-
-//   const {data , error} = await supabase
-//     .from("course_offering")
-//     .insert({
-//       course_id: parseInt(courseId),
-//       degree: degree,
-//       dept_name: dept_name,
-//       acad_session: acad_session,
-//       status: status,
-//       slot: slot,
-//       section: section,
-//       instructor_id: instructorData.instructor_id,
-//       is_coordinator: is_coordinator || false
-//     })
-//     .select()
-//     .single();
-
-//     if (error) {
-//       console.error("createOffering error:", error);
-//       return res.status(500).json({
-//         success: false,
-//         message: error.message
-//       });
-//     }
-
-//     return res.status(201).json({
-//       success: true,
-//       data
-//     });
-//   } catch (err) {
-//     console.error("createOffering error:", err);
-//     return res.status(500).json({
-//       success: false,
-//       message: err.message
-//     });
-//   }
-// }
-
-//update course enrollment
 export const updateEnrollment = async (req, res) => {
   // Derive student from session; offeringId from URL
   const offeringId = req.params.offeringId;
@@ -627,70 +626,6 @@ export const loginUser = async (req, res) => {
   }
 };
 
-
-// // Get enrolled courses for a student
-// export const getEnrolledCourses = async (req, res) => {
-//   const userId = req.user?.user_id;
-
-//   try {
-//     const { data: studentData, error: studentError } = await supabase
-//       .from("student")
-//       .select("student_id")
-//       .eq('user_id', userId)
-//       .single();
-
-//     if (studentError || !studentData) {
-//       console.log("Student not found for user_id:", userId);
-//       return res.status(404).json({
-//         success: false,
-//         message: "Student record not found"
-//       });
-//     }
-
-//     const { data, error } = await supabase
-//       .from("course_enrollment")
-//       .select(`
-//         enrollment_id,
-//         enrol_type,
-//         enrol_status,
-//         grade,
-//         offering_id,
-//         course_offering:offering_id (
-//           *,
-//           course:course_id (
-//             code,
-//             title,
-//             ltp
-//           ),
-//           instructor:instructor_id (
-//             user_id,
-//             users:user_id (
-//               first_name,
-//               last_name,
-//               email
-//             )
-//           )
-//         )
-//       `)
-//       .eq('student_id', studentData.student_id)
-//       .eq('is_deleted', false);
-
-//     if (error) throw error;
-
-//     return res.status(200).json({
-//       success: true,
-//       data: data || []
-//     });
-
-//   } catch (err) {
-//     console.error("getEnrolledCourses error:", err);
-//     return res.status(500).json({
-//       success: false,
-//       message: err.message
-//     });
-//   }
-// };
-
 // Get enrolled courses for a student (NEW SCHEMA)
 export const getEnrolledCourses = async (req, res) => {
   const userId = req.user?.user_id;
@@ -751,9 +686,22 @@ export const getEnrolledCourses = async (req, res) => {
       throw error;
     }
 
+    // Add dept_name to each course_offering by finding coordinator's branch
+    const enrichedData = data.map(enrollment => ({
+      ...enrollment,
+      course_offering: {
+        ...enrollment.course_offering,
+        dept_name: (() => {
+          const coordinators = enrollment.course_offering?.course_offering_instructor || [];
+          const coordinator = coordinators.find(i => i.is_coordinator);
+          return coordinator?.instructor?.branch || 'N/A';
+        })()
+      }
+    }));
+
     return res.status(200).json({
       success: true,
-      data: data || []
+      data: enrichedData || []
     });
 
   } catch (err) {
@@ -764,7 +712,6 @@ export const getEnrolledCourses = async (req, res) => {
     });
   }
 };
-
 
 // Get student credit details from student_credit table
 export const getStudentCredits = async (req, res) => {
@@ -899,6 +846,92 @@ export const getStudentCGPA = async (req, res) => {
   }
 };
 
+// Create course offering with multiple instructors
+export const createOfferingWithInstructors = async (req, res) => {
+  const {
+    course_id,
+    acad_session,
+    status,
+    slot,
+    section,
+    targets,
+    instructors
+  } = req.body;
+
+  // Basic validation
+  if (!course_id || !acad_session || !status || !Array.isArray(instructors) || instructors.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "course_id, acad_session, status, instructors are required"
+    });
+  }
+
+  if (!Array.isArray(targets)) {
+    return res.status(400).json({
+      success: false,
+      message: "targets must be an array"
+    });
+  }
+
+  const coordinators = instructors.filter(i => i.is_coordinator);
+  if (coordinators.length !== 1) {
+    return res.status(400).json({
+      success: false,
+      message: "Exactly one instructor must be marked as coordinator"
+    });
+  }
+
+  try {
+    // Create offering
+    const { data: offering, error: offeringError } = await supabase
+      .from("course_offering")
+      .insert({
+        course_id,
+        acad_session,
+        status,
+        slot: slot || null,
+        section: section || null,
+        targets, // ✅ JSONB insert
+        is_deleted: false
+      })
+      .select()
+      .single();
+
+    if (offeringError) throw offeringError;
+
+    // Insert instructors
+    const instructorRows = instructors.map(i => ({
+      offering_id: offering.offering_id,
+      instructor_id: i.instructor_id,
+      is_coordinator: i.is_coordinator
+    }));
+
+    const { error: instrError } = await supabase
+      .from("course_offering_instructor")
+      .insert(instructorRows);
+
+    if (instrError) {
+      await supabase
+        .from("course_offering")
+        .delete()
+        .eq("offering_id", offering.offering_id);
+
+      throw instrError;
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: offering
+    });
+  } catch (err) {
+    console.error("createOfferingWithInstructors error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
 //  Get all course offerings
 export const getCourseOfferings = async (req, res) => {
   try {
@@ -978,11 +1011,16 @@ export const getCourseOfferings = async (req, res) => {
       }
     }
 
-    // Enrich offerings with instructor and dept_name data
-    const enrichedData = offerings.map(offering => ({
-      ...offering,
-      dept_name: instructorMap[offering.offering_id]?.coordinator?.branch || 'N/A'
-    }));
+    // Enrichment offerings with instructor and dept_name data
+    const enrichedData = offerings.map(offering => {
+      const info = instructorMap[offering.offering_id] || { coordinator: null, instructors: [] };
+      return {
+        ...offering,
+        dept_name: info.coordinator?.branch || 'N/A',
+        instructor: info.coordinator,
+        instructors: info.instructors
+      };
+    });
 
     console.log(
       '[getCourseOfferings] Success! Found',
@@ -1032,7 +1070,7 @@ export const getMyOfferings = async (req, res) => {
     if (ioError) throw ioError;
 
     const offeringIds = instructorOfferings.map(io => io.offering_id);
-    
+
     if (offeringIds.length === 0) {
       return res.status(200).json({
         success: true,
@@ -1058,6 +1096,7 @@ export const getMyOfferings = async (req, res) => {
         )
       `)
       .in('offering_id', offeringIds);
+
 
     if (error) throw error;
 
@@ -1330,7 +1369,7 @@ export const updateOfferingStatus = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Invalid status. Allowed values: Accepted, Rejected, Enrolling, Running, Completed, Cancelled",
+          "Invalid status. Allowed values: Accepted, Rejected, Enrolling, Running, Completed, Canceled",
       });
     }
 
@@ -1966,160 +2005,6 @@ export const getPendingInstructorEnrollments = async (req, res) => {
     });
   }
 };
-
-// Search courses by code
-export const searchCourses = async (req, res) => {
-  try {
-    const { code } = req.query;
-
-    if (!code || code.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Course code is required"
-      });
-    }
-
-    const { data, error } = await supabase
-      .from("course")
-      .select("course_id, code, title, ltp, status")
-      .eq("is_deleted", false)
-      .ilike("code", `%${code}%`)
-      .limit(10);
-
-    if (error) throw error;
-
-    return res.status(200).json({
-      success: true,
-      data: data || []
-    });
-  } catch (err) {
-    console.error("searchCourses error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-};
-
-// Create course offering with multiple instructors
-export const createOfferingWithInstructors = async (req, res) => {
-  const {
-    course_id,
-    acad_session,
-    status,
-    slot,
-    section,
-    targets,
-    instructors
-  } = req.body;
-
-  // Basic validation
-  if (!course_id || !acad_session || !status || !Array.isArray(instructors) || instructors.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "course_id, acad_session, status, instructors are required"
-    });
-  }
-
-  if (!Array.isArray(targets)) {
-    return res.status(400).json({
-      success: false,
-      message: "targets must be an array"
-    });
-  }
-
-  const coordinators = instructors.filter(i => i.is_coordinator);
-  if (coordinators.length !== 1) {
-    return res.status(400).json({
-      success: false,
-      message: "Exactly one instructor must be marked as coordinator"
-    });
-  }
-
-  try {
-    // Create offering
-    const { data: offering, error: offeringError } = await supabase
-      .from("course_offering")
-      .insert({
-        course_id,
-        acad_session,
-        status,
-        slot: slot || null,
-        section: section || null,
-        targets, // ✅ JSONB insert
-        is_deleted: false
-      })
-      .select()
-      .single();
-
-    if (offeringError) throw offeringError;
-
-    // Insert instructors
-    const instructorRows = instructors.map(i => ({
-      offering_id: offering.offering_id,
-      instructor_id: i.instructor_id,
-      is_coordinator: i.is_coordinator
-    }));
-
-    const { error: instrError } = await supabase
-      .from("course_offering_instructor")
-      .insert(instructorRows);
-
-    if (instrError) {
-      await supabase
-        .from("course_offering")
-        .delete()
-        .eq("offering_id", offering.offering_id);
-
-      throw instrError;
-    }
-
-    return res.status(201).json({
-      success: true,
-      data: offering
-    });
-  } catch (err) {
-    console.error("createOfferingWithInstructors error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-};
-
-
-// Get all instructors (for dropdown in AddOfferingPage)
-export const getAllInstructors = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("instructor")
-      .select(`
-        instructor_id,
-        user_id,
-        users:user_id (
-          id,
-          email,
-          first_name,
-          last_name
-        )
-      `)
-      .eq("is_deleted", false);
-
-    if (error) throw error;
-
-    return res.status(200).json({
-      success: true,
-      data: data || []
-    });
-  } catch (err) {
-    console.error("getAllInstructors error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-};
-
 
 export const getCourseOfferingInstructors = async (req, res) => {
   try {

@@ -229,7 +229,7 @@ router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updat
 // New endpoints for AddOfferingPage
 router.get('/courses/search', searchCourses);
 router.get('/instructors/all', requireAuth, getAllInstructors);
-router.get('/course/offering/instructors',requireAuth,getCourseOfferingInstructors);
+router.get('/course/offering/instructors', requireAuth, getCourseOfferingInstructors);
 
 router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 
