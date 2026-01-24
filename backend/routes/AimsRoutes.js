@@ -32,6 +32,7 @@ import {
   cancelCourseOffering,
   getPendingInstructorEnrollments,
   getPendingAdvisorEnrollments,
+  updateAdvisorEnrollmentStatus,
   getAlerts,
   createAlert,
   deleteAlert,
@@ -201,6 +202,9 @@ router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
 
 router.get('/enrollment/pending-instructor', requireAuth, getPendingInstructorEnrollments);
 router.get('/enrollment/pending-advisor', requireAuth, getPendingAdvisorEnrollments);
+
+// Advisor approval endpoint - for faculty advisors to approve/reject pending advisor approvals
+router.put('/enrollment/:enrollmentId/advisor-approval', requireAuth, updateAdvisorEnrollmentStatus);
 
 //create course
 // Admin creates a course (uses session identity)

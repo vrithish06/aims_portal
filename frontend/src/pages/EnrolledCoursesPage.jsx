@@ -113,7 +113,7 @@ function EnrolledCoursesPage() {
     }
   };
 
-  const handleDrop = async (enrollmentId) => {
+  const handleDrop = async () => {
     const enrollment = selectedEnrollment || courses.find(c => c.id === enrollmentId);
     if (!enrollment) return;
 
@@ -533,18 +533,20 @@ function EnrolledCoursesPage() {
             <div className="p-8 space-y-6">
               {/* Modal Content Grid */}
               <div className="grid grid-cols-2 gap-6">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs font-bold text-blue-600 uppercase mb-1">Status</p>
-                  <span
-                    className={`font-bold inline-block px-2 py-0.5 rounded text-sm capitalize ${
-                      selectedEnrollment.enrol_status === "enrolled"
-                        ? "text-green-600 bg-green-100"
-                        : selectedEnrollment.enrol_status === "completed"
-                        ? "text-blue-600 bg-blue-100"
-                        : "text-red-600 bg-red-100"
-                    }`}
-                  >
-                    {selectedEnrollment.enrol_status || "Pending"}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Course Title</p>
+                  <p className="text-lg font-semibold text-gray-900">{selectedEnrollment.course_offering?.course?.title}</p>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Status</p>
+                  <span className={`font-bold px-3 py-1 rounded ${
+                    selectedEnrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' : 
+                    selectedEnrollment.enrol_status === 'completed' ? 'text-blue-600 bg-blue-100' :
+                    selectedEnrollment.enrol_status === 'student withdrawn' ? 'text-red-600 bg-red-100' :
+                    selectedEnrollment.enrol_status === 'student dropped' ? 'text-red-600 bg-red-100' :
+                    'text-yellow-600 bg-yellow-100'
+                  }`}>
+                    {selectedEnrollment.enrol_status ? selectedEnrollment.enrol_status.charAt(0).toUpperCase() + selectedEnrollment.enrol_status.slice(1) : 'Pending'}
                   </span>
                 </div>
 
@@ -611,24 +613,37 @@ function EnrolledCoursesPage() {
                 </div>
               </div>
 
-              {/* Modal Footer Actions */}
-              {selectedEnrollment.enrol_status === "enrolled" && (
-                <div className="pt-6 mt-6 border-t border-gray-100">
+              {/* Action Buttons */}
+              {(selectedEnrollment.enrol_status === 'enrolled' || 
+                selectedEnrollment.enrol_status === 'pending advisor approval' || 
+                selectedEnrollment.enrol_status === 'pending instructor approval') && (
+                <div className="border-t-2 border-orange-200 pt-6">
+                  <p className="text-lg font-bold text-gray-900 mb-4">Course Actions</p>
                   <div className="flex gap-3">
-                    <button
-                      className="flex-1 bg-white border border-orange-200 text-orange-600 py-3 rounded-xl font-bold hover:bg-orange-50 transition-colors"
-                      onClick={() => handleWithdraw(selectedEnrollment.id)}
-                      disabled={withdrawing === selectedEnrollment.id}
+                    {selectedEnrollment.enrol_status === 'enrolled' && (
+                      <button 
+                        className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                        onClick={() => {
+                          handleWithdraw(selectedEnrollment);
+                        }}
+                        disabled={withdrawing === selectedEnrollment.enrollment_id}
+                      >
+                        {withdrawing === selectedEnrollment.enrollment_id ? 'Withdrawing...' : 'Withdraw'}
+                      </button>
+                    )}
+                    <button 
+                      className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+                        selectedEnrollment.enrol_status === 'enrolled' 
+                          ? 'bg-red-500 text-white hover:bg-red-600' 
+                          : 'bg-gray-500 text-white hover:bg-gray-600'
+                      }`}
+                      onClick={() => {
+                        handleDrop(selectedEnrollment);
+                      }}
+                      disabled={dropping === selectedEnrollment.enrollment_id}
+                      title={selectedEnrollment.enrol_status !== 'enrolled' ? 'Can drop pending requests' : ''}
                     >
-                      {withdrawing === selectedEnrollment.id ? "Processing..." : "Withdraw Course"}
-                    </button>
-
-                    <button
-                      className="flex-1 bg-white border border-red-200 text-red-600 py-3 rounded-xl font-bold hover:bg-red-50 transition-colors"
-                      onClick={() => handleDrop(selectedEnrollment.id)}
-                      disabled={dropping === selectedEnrollment.id}
-                    >
-                      {dropping === selectedEnrollment.id ? "Processing..." : "Drop Course"}
+                      {dropping === selectedEnrollment.enrollment_id ? 'Dropping...' : 'Drop'}
                     </button>
                   </div>
                 </div>
