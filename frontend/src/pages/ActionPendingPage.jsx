@@ -401,19 +401,35 @@ function ActionPendingDetailPage() {
                                 {enrollment.student?.users?.email}
                               </td>
                               <td className="px-4 py-3 text-sm">
-                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                                <span className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-block whitespace-nowrap ${
+                                  enrollment.enrol_type === 'Credit'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : enrollment.enrol_type === 'Credit for Concentration'
+                                    ? 'bg-indigo-100 text-indigo-800'
+                                    : enrollment.enrol_type === 'Audit'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : enrollment.enrol_type === 'Remedial'
+                                    ? 'bg-pink-100 text-pink-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
                                   {enrollment.enrol_type}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                <span className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-block whitespace-nowrap ${
                                   enrollment.enrol_status === 'pending instructor approval'
-                                    ? 'bg-yellow-100 text-yellow-800'
+                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
                                     : enrollment.enrol_status === 'pending advisor approval'
-                                    ? 'bg-orange-100 text-orange-800'
-                                    : 'bg-gray-100 text-gray-800'
+                                    ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                    : enrollment.enrol_status === 'enrolled'
+                                    ? 'bg-green-100 text-green-800 border border-green-300'
+                                    : enrollment.enrol_status === 'completed'
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                    : enrollment.enrol_status === 'instructor rejected'
+                                    ? 'bg-red-100 text-red-800 border border-red-300'
+                                    : 'bg-gray-100 text-gray-800 border border-gray-300'
                                 }`}>
-                                  {enrollment.enrol_status.replace(/_/g, ' ')}
+                                  {enrollment.enrol_status?.replaceAll('_', ' ') || 'N/A'}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm">

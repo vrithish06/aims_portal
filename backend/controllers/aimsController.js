@@ -3,14 +3,23 @@ import bcrypt from "bcrypt";
 
 // Authentication middleware
 export const requireAuth = (req, res, next) => {
+  console.log(`[AUTH-CHECK] Session ID: ${req.sessionID}`);
+  console.log(`[AUTH-CHECK] Session exists: ${!!req.session}`);
+  console.log(`[AUTH-CHECK] User in session: ${!!req.session?.user}`);
+  console.log(`[AUTH-CHECK] User email: ${req.session?.user?.email || 'none'}`);
+  console.log(`[AUTH-CHECK] Full session data:`, JSON.stringify(req.session, null, 2));
+
   if (!req.session || !req.session.user) {
+    console.log(`[AUTH-CHECK] ❌ FAILED - No user in session`);
     return res.status(401).json({
       success: false,
       message: 'Authentication required'
     });
   }
+
   // Attach user to request object for use in controllers
   req.user = req.session.user;
+  console.log(`[AUTH-CHECK] ✅ SUCCESS - User authenticated:`, req.user.email);
   next();
 };
 
@@ -115,19 +124,19 @@ export const createCourse = async (req, res) => {
   }
 
   try {
-    // Get instructor_id from user_id
-    const { data: instructorData, error: instructorError } = await supabase
-      .from("instructor")
-      .select("instructor_id")
-      .eq('user_id', userId)
-      .single();
+    //check if admin's user_id exists in users table
+    // const { data: adminData, error: adminError } = await supabase
+    //   .from("users")
+    //   .select("user_id")
+    //   .eq('user_id', userId)
+    //   .single();
 
-    if (instructorError || !instructorData) {
-      return res.status(404).json({
-        success: false,
-        message: "Instructor record not found"
-      });
-    }
+    // if (adminError || !adminData) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "admin record not found"
+    //   });
+    // }
 
     const { data, error } = await supabase
       .from("course")
@@ -138,7 +147,7 @@ export const createCourse = async (req, res) => {
         status,
         has_lab,
         pre_req,
-        author_id: instructorData.instructor_id
+        author_id: userId
       })
       .select()
       .single();
@@ -173,10 +182,10 @@ export const createInstructor = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("instructor")
-      .insert({ 
-        user_id, 
-        branch, 
-        year_joined 
+      .insert({
+        user_id,
+        branch,
+        year_joined
       })
       .select()
       .single();
@@ -249,6 +258,8 @@ export const deleteInstructor = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+// Get students
 export const getStudents = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -300,7 +311,7 @@ export const updateStudent = async (req, res) => {
   // Use session identity for updates
   const user_id = req.user?.user_id;
   const { branch, cgpa, total_credits_completed, degree } = req.body;
-  
+
   try {
     const { data, error } = await supabase
       .from("student")
@@ -393,71 +404,71 @@ export const createEnrollment = async (req, res) => {
 };
 
 //create course offering
-export const createOffering = async (req, res) => {
-  // Instructor identity must come from session; courseId comes from URL
-  const userId = req.user?.user_id;
-  const { courseId } = req.params;
-  try{
-  const {
-    degree,
-    dept_name,
-    acad_session,
-    status,
-    slot,
-    section,
-    is_coordinator
-  } = req.body;
+// export const createOffering = async (req, res) => {
+//   // Instructor identity must come from session; courseId comes from URL
+//   const userId = req.user?.user_id;
+//   const { courseId } = req.params;
+//   try{
+//   const {
+//     degree,
+//     dept_name,
+//     acad_session,
+//     status,
+//     slot,
+//     section,
+//     is_coordinator
+//   } = req.body;
 
-  // Get instructor_id from user_id
-  const { data: instructorData, error: instructorError } = await supabase
-    .from("instructor")
-    .select("instructor_id")
-    .eq('user_id', userId)
-    .single();
+//   // Get instructor_id from user_id
+//   const { data: instructorData, error: instructorError } = await supabase
+//     .from("instructor")
+//     .select("instructor_id")
+//     .eq('user_id', userId)
+//     .single();
 
-  if (instructorError || !instructorData) {
-    return res.status(404).json({
-      success: false,
-      message: "Instructor record not found"
-    });
-  }
+//   if (instructorError || !instructorData) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Instructor record not found"
+//     });
+//   }
 
-  const {data , error} = await supabase
-    .from("course_offering")
-    .insert({
-      course_id: parseInt(courseId),
-      degree: degree,
-      dept_name: dept_name,
-      acad_session: acad_session,
-      status: status,
-      slot: slot,
-      section: section,
-      instructor_id: instructorData.instructor_id,
-      is_coordinator: is_coordinator || false
-    })
-    .select()
-    .single();
+//   const {data , error} = await supabase
+//     .from("course_offering")
+//     .insert({
+//       course_id: parseInt(courseId),
+//       degree: degree,
+//       dept_name: dept_name,
+//       acad_session: acad_session,
+//       status: status,
+//       slot: slot,
+//       section: section,
+//       instructor_id: instructorData.instructor_id,
+//       is_coordinator: is_coordinator || false
+//     })
+//     .select()
+//     .single();
 
-    if (error) {
-      console.error("createOffering error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
+//     if (error) {
+//       console.error("createOffering error:", error);
+//       return res.status(500).json({
+//         success: false,
+//         message: error.message
+//       });
+//     }
 
-    return res.status(201).json({
-      success: true,
-      data
-    });
-  } catch (err) {
-    console.error("createOffering error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-}
+//     return res.status(201).json({
+//       success: true,
+//       data
+//     });
+//   } catch (err) {
+//     console.error("createOffering error:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: err.message
+//     });
+//   }
+// }
 
 //update course enrollment
 export const updateEnrollment = async (req, res) => {
@@ -617,8 +628,231 @@ export const loginUser = async (req, res) => {
 };
 
 
-// Get enrolled courses for a student
+// // Get enrolled courses for a student
+// export const getEnrolledCourses = async (req, res) => {
+//   const userId = req.user?.user_id;
+
+//   try {
+//     const { data: studentData, error: studentError } = await supabase
+//       .from("student")
+//       .select("student_id")
+//       .eq('user_id', userId)
+//       .single();
+
+//     if (studentError || !studentData) {
+//       console.log("Student not found for user_id:", userId);
+//       return res.status(404).json({
+//         success: false,
+//         message: "Student record not found"
+//       });
+//     }
+
+//     const { data, error } = await supabase
+//       .from("course_enrollment")
+//       .select(`
+//         enrollment_id,
+//         enrol_type,
+//         enrol_status,
+//         grade,
+//         offering_id,
+//         course_offering:offering_id (
+//           *,
+//           course:course_id (
+//             code,
+//             title,
+//             ltp
+//           ),
+//           instructor:instructor_id (
+//             user_id,
+//             users:user_id (
+//               first_name,
+//               last_name,
+//               email
+//             )
+//           )
+//         )
+//       `)
+//       .eq('student_id', studentData.student_id)
+//       .eq('is_deleted', false);
+
+//     if (error) throw error;
+
+//     return res.status(200).json({
+//       success: true,
+//       data: data || []
+//     });
+
+//   } catch (err) {
+//     console.error("getEnrolledCourses error:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: err.message
+//     });
+//   }
+// };
+
+// Get enrolled courses for a student (NEW SCHEMA)
 export const getEnrolledCourses = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    // 1️⃣ Get student_id
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    // 2️⃣ Fetch enrollments with correct joins
+    const { data, error } = await supabase
+      .from("course_enrollment")
+      .select(`
+        enrollment_id,
+        enrol_type,
+        enrol_status,
+        grade,
+        offering_id,
+        course_offering:offering_id (
+          offering_id,
+          acad_session,
+          status,
+          slot,
+          section,
+          course:course_id (
+            code,
+            title,
+            ltp
+          ),
+          course_offering_instructor (
+            is_coordinator,
+            instructor:instructor_id (
+              instructor_id,
+              users:user_id (
+                first_name,
+                last_name,
+                email
+              )
+            )
+          )
+        )
+      `)
+      .eq("student_id", studentData.student_id)
+      .eq("is_deleted", false);
+
+    if (error) {
+      console.error("Supabase query error:", error);
+      throw error;
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+
+  } catch (err) {
+    console.error("getEnrolledCourses error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+
+// Get student credit details from student_credit table
+export const getStudentCredits = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (studentError || !studentData) {
+      console.log("Student not found for user_id:", userId);
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    // Fetch student credit records
+    const { data: credits, error: creditsError } = await supabase
+      .from("student_credit")
+      .select(`
+        credit_id,
+        student_id,
+        acad_session,
+        cred_earned,
+        cred_registered,
+        cred_earned_total,
+        enrol_id,
+        grade,
+        is_deleted
+      `)
+      .eq('student_id', studentData.student_id)
+      .eq('is_deleted', false)
+      .order('acad_session', { ascending: true });
+
+    if (creditsError) throw creditsError;
+
+    // Fetch SGPA from cgpa_table for each session
+    const { data: cgpaData, error: cgpaError } = await supabase
+      .from("cgpa_table")
+      .select(`
+        id,
+        student_id,
+        cg,
+        sg,
+        semester,
+        session
+      `)
+      .eq('student_id', studentData.student_id)
+      .order('session', { ascending: true });
+
+    if (cgpaError) throw cgpaError;
+
+    // Create a map of SGPA by session for quick lookup
+    const sgpaMap = {};
+    cgpaData?.forEach(row => {
+      sgpaMap[row.session] = {
+        sg: row.sg,
+        cg: row.cg,
+        semester: row.semester
+      };
+    });
+
+    // Enrich credits data with SGPA
+    const enrichedCredits = credits?.map(credit => ({
+      ...credit,
+      sgpa: sgpaMap[credit.acad_session]?.sg || 0
+    })) || [];
+
+    return res.status(200).json({
+      success: true,
+      data: enrichedCredits
+    });
+
+  } catch (err) {
+    console.error("getStudentCredits error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get CGPA and SGPA from cgpa_table
+export const getStudentCGPA = async (req, res) => {
   const userId = req.user?.user_id;
 
   try {
@@ -637,32 +871,17 @@ export const getEnrolledCourses = async (req, res) => {
     }
 
     const { data, error } = await supabase
-      .from("course_enrollment")
+      .from("cgpa_table")
       .select(`
-        enrollment_id,
-        enrol_type,
-        enrol_status,
-        grade,
-        offering_id,
-        course_offering:offering_id (
-          *,
-          course:course_id (
-            code,
-            title,
-            ltp
-          ),
-          instructor:instructor_id (
-            user_id,
-            users:user_id (
-              first_name,
-              last_name,
-              email
-            )
-          )
-        )
+        id,
+        student_id,
+        cg,
+        sg,
+        semester,
+        session
       `)
       .eq('student_id', studentData.student_id)
-      .eq('is_deleted', false);
+      .order('session', { ascending: true });
 
     if (error) throw error;
 
@@ -672,7 +891,7 @@ export const getEnrolledCourses = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("getEnrolledCourses error:", err);
+    console.error("getStudentCGPA error:", err);
     return res.status(500).json({
       success: false,
       message: err.message
@@ -684,35 +903,100 @@ export const getEnrolledCourses = async (req, res) => {
 export const getCourseOfferings = async (req, res) => {
   try {
     console.log('[getCourseOfferings] Fetching course offerings...');
-    const { data, error } = await supabase
-      .from("course_offering")
+
+    const { data: offerings, error } = await supabase
+      .from('course_offering')
       .select(`
-        *,
+        offering_id,
+        course_id,
+        is_deleted,
+        acad_session,
+        status,
+        slot,
+        section,
+        targets,
         course:course_id (
           code,
           title,
           ltp
-        ),
-        instructor:instructor_id (
-          instructor_id,
-          user_id
         )
-      `);
+      `)
+      .eq('is_deleted', false);
 
     if (error) {
       console.error('[getCourseOfferings] Error:', error);
       throw error;
     }
 
-    console.log('[getCourseOfferings] Success! Found', data?.length || 0, 'offerings');
+    // Fetch instructors for all offerings
+    const { data: offeringInstructors, error: instrError } = await supabase
+      .from('course_offering_instructor')
+      .select(`
+        offering_id,
+        is_coordinator,
+        instructor:instructor_id (
+          instructor_id,
+          branch,
+          user_id,
+          users:user_id (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `);
+
+    if (instrError) {
+      console.error('[getCourseOfferings] Instructors Error:', instrError);
+    }
+
+    // Build a map of offering_id to instructor data
+    const instructorMap = {};
+    if (offeringInstructors) {
+      for (const row of offeringInstructors) {
+        if (!instructorMap[row.offering_id]) {
+          instructorMap[row.offering_id] = {
+            coordinator: null,
+            instructors: []
+          };
+        }
+
+        const instructorData = {
+          instructor_id: row.instructor.instructor_id,
+          user_id: row.instructor.user_id,
+          name: `${row.instructor.users.first_name} ${row.instructor.users.last_name}`,
+          email: row.instructor.users.email,
+          branch: row.instructor.branch,
+          is_coordinator: row.is_coordinator
+        };
+
+        instructorMap[row.offering_id].instructors.push(instructorData);
+        if (row.is_coordinator) {
+          instructorMap[row.offering_id].coordinator = instructorData;
+        }
+      }
+    }
+
+    // Enrich offerings with instructor and dept_name data
+    const enrichedData = offerings.map(offering => ({
+      ...offering,
+      dept_name: instructorMap[offering.offering_id]?.coordinator?.branch || 'N/A'
+    }));
+
+    console.log(
+      '[getCourseOfferings] Success! Found',
+      enrichedData?.length || 0,
+      'offerings'
+    );
 
     return res.status(200).json({
       success: true,
-      data
+      data: enrichedData || []
     });
 
   } catch (err) {
-    console.error("getCourseOfferings error:", err.message || err);
+    console.error('getCourseOfferings error:', err.message || err);
     return res.status(500).json({
       success: false,
       message: err.message || 'Unknown error'
@@ -739,6 +1023,23 @@ export const getMyOfferings = async (req, res) => {
       });
     }
 
+    // Get offering IDs for this instructor from course_offering_instructor
+    const { data: instructorOfferings, error: ioError } = await supabase
+      .from("course_offering_instructor")
+      .select("offering_id")
+      .eq('instructor_id', instructorData.instructor_id);
+
+    if (ioError) throw ioError;
+
+    const offeringIds = instructorOfferings.map(io => io.offering_id);
+    
+    if (offeringIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
     // Now get the course offerings for this instructor
     const { data, error } = await supabase
       .from("course_offering")
@@ -756,13 +1057,36 @@ export const getMyOfferings = async (req, res) => {
           enrol_status
         )
       `)
-      .eq('instructor_id', instructorData.instructor_id);
+      .in('offering_id', offeringIds);
 
     if (error) throw error;
 
-    // Add enrollment count to each offering
+    // Fetch instructors for these offerings to get dept_name
+    const { data: offeringInstructors } = await supabase
+      .from('course_offering_instructor')
+      .select(`
+        offering_id,
+        is_coordinator,
+        instructor:instructor_id (
+          branch
+        )
+      `)
+      .in('offering_id', offeringIds);
+
+    // Build a map of offering_id to branch
+    const deptMap = {};
+    if (offeringInstructors) {
+      for (const row of offeringInstructors) {
+        if (row.is_coordinator) {
+          deptMap[row.offering_id] = row.instructor?.branch || 'N/A';
+        }
+      }
+    }
+
+    // Add enrollment count and dept_name to each offering
     const enrichedData = data.map(offering => ({
       ...offering,
+      dept_name: deptMap[offering.offering_id] || 'N/A',
       _count: {
         enrollments: offering.enrollments?.length || 0
       }
@@ -794,15 +1118,6 @@ export const getAllOfferings = async (req, res) => {
           title,
           ltp
         ),
-        instructor:instructor_id (
-          instructor_id,
-          user_id,
-          users:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        ),
         enrollments:course_enrollment(
           enrollment_id,
           student_id,
@@ -813,9 +1128,31 @@ export const getAllOfferings = async (req, res) => {
 
     if (error) throw error;
 
-    // Add enrollment count to each offering
+    // Fetch instructors for all offerings to get dept_name
+    const { data: offeringInstructors } = await supabase
+      .from('course_offering_instructor')
+      .select(`
+        offering_id,
+        is_coordinator,
+        instructor:instructor_id (
+          branch
+        )
+      `);
+
+    // Build a map of offering_id to branch
+    const deptMap = {};
+    if (offeringInstructors) {
+      for (const row of offeringInstructors) {
+        if (row.is_coordinator) {
+          deptMap[row.offering_id] = row.instructor?.branch || 'N/A';
+        }
+      }
+    }
+
+    // Add enrollment count and dept_name to each offering
     const enrichedData = data.map(offering => ({
       ...offering,
+      dept_name: deptMap[offering.offering_id] || 'N/A',
       _count: {
         enrollments: offering.enrollments?.length || 0
       }
@@ -925,64 +1262,83 @@ export const getOfferingEnrollments = async (req, res) => {
   }
 };
 
-// Update course offering status (for instructors to accept/reject proposed offerings and for admin to manage courses)
+// Update course offering status
 export const updateOfferingStatus = async (req, res) => {
   const { offeringId } = req.params;
   const { status } = req.body;
   const userId = req.user?.user_id;
   const userRole = req.user?.role;
 
-  // Allowed transitions from Proposed
-  const validStatuses = ['Accepted', 'Rejected'];
-  const statusMap = {
-    'Accepted': 'Enrolling',
-    'Rejected': 'Rejected'
+  // Proposal decision mapping
+  const proposalStatusMap = {
+    Accepted: "Enrolling",
+    Rejected: "Rejected",
   };
 
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({
-      success: false,
-      message: `Invalid status. Allowed values: ${validStatuses.join(', ')}`
-    });
-  }
+  // Direct lifecycle statuses
+  const directStatuses = [
+    "Enrolling",
+    "Running",
+    "Completed",
+    "Canceled",
+  ];
 
   try {
-    // Verify that offering exists
+    // Fetch offering
     const { data: offering, error: offeringError } = await supabase
       .from("course_offering")
-      .select("*, instructor(*)")
-      .eq('offering_id', offeringId)
+      .select("*")
+      .eq("offering_id", offeringId)
       .single();
 
     if (offeringError || !offering) {
       return res.status(404).json({
         success: false,
-        message: "Offering not found"
+        message: "Offering not found",
       });
     }
 
-    // Check authorization: instructor owns the offering OR user is admin
-    if (userRole !== 'admin') {
+    // Authorization: admin OR owning instructor
+    if (userRole !== "admin") {
       const { data: instructor, error: instructorError } = await supabase
         .from("instructor")
         .select("instructor_id")
-        .eq('user_id', userId)
+        .eq("user_id", userId)
         .single();
 
-      if (instructorError || offering.instructor_id !== instructor.instructor_id) {
+      if (
+        instructorError ||
+        offering.instructor_id !== instructor.instructor_id
+      ) {
         return res.status(403).json({
           success: false,
-          message: "You can only update your own offerings"
+          message: "You can only update your own offerings",
         });
       }
     }
 
-    // Update offering status
-    const newStatus = statusMap[status];
+    // Decide final status
+    let newStatus;
+
+    if (proposalStatusMap[status]) {
+      // Accepted / Rejected case
+      newStatus = proposalStatusMap[status];
+    } else if (directStatuses.includes(status)) {
+      // Direct status update case
+      newStatus = status;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid status. Allowed values: Accepted, Rejected, Enrolling, Running, Completed, Cancelled",
+      });
+    }
+
+    // Update DB
     const { data, error } = await supabase
       .from("course_offering")
       .update({ status: newStatus })
-      .eq('offering_id', offeringId)
+      .eq("offering_id", offeringId)
       .select()
       .single();
 
@@ -991,16 +1347,17 @@ export const updateOfferingStatus = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Offering status updated to ${newStatus}`,
-      data
+      data,
     });
   } catch (err) {
     console.error("updateOfferingStatus error:", err);
     return res.status(500).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
   }
 };
+
 
 // Update specific enrollment status (for teacher/admin to approve pending students)
 export const updateEnrollmentStatus = async (req, res) => {
@@ -1613,4 +1970,296 @@ export const getPendingInstructorEnrollments = async (req, res) => {
   }
 };
 
+// Search courses by code
+export const searchCourses = async (req, res) => {
+  try {
+    const { code } = req.query;
 
+    if (!code || code.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Course code is required"
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("course")
+      .select("course_id, code, title, ltp, status")
+      .eq("is_deleted", false)
+      .ilike("code", `%${code}%`)
+      .limit(10);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+  } catch (err) {
+    console.error("searchCourses error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Create course offering with multiple instructors
+export const createOfferingWithInstructors = async (req, res) => {
+  const {
+    course_id,
+    acad_session,
+    status,
+    slot,
+    section,
+    targets,
+    instructors
+  } = req.body;
+
+  // Basic validation
+  if (!course_id || !acad_session || !status || !Array.isArray(instructors) || instructors.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "course_id, acad_session, status, instructors are required"
+    });
+  }
+
+  if (!Array.isArray(targets)) {
+    return res.status(400).json({
+      success: false,
+      message: "targets must be an array"
+    });
+  }
+
+  const coordinators = instructors.filter(i => i.is_coordinator);
+  if (coordinators.length !== 1) {
+    return res.status(400).json({
+      success: false,
+      message: "Exactly one instructor must be marked as coordinator"
+    });
+  }
+
+  try {
+    // Create offering
+    const { data: offering, error: offeringError } = await supabase
+      .from("course_offering")
+      .insert({
+        course_id,
+        acad_session,
+        status,
+        slot: slot || null,
+        section: section || null,
+        targets, // ✅ JSONB insert
+        is_deleted: false
+      })
+      .select()
+      .single();
+
+    if (offeringError) throw offeringError;
+
+    // Insert instructors
+    const instructorRows = instructors.map(i => ({
+      offering_id: offering.offering_id,
+      instructor_id: i.instructor_id,
+      is_coordinator: i.is_coordinator
+    }));
+
+    const { error: instrError } = await supabase
+      .from("course_offering_instructor")
+      .insert(instructorRows);
+
+    if (instrError) {
+      await supabase
+        .from("course_offering")
+        .delete()
+        .eq("offering_id", offering.offering_id);
+
+      throw instrError;
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: offering
+    });
+  } catch (err) {
+    console.error("createOfferingWithInstructors error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+
+// Get all instructors (for dropdown in AddOfferingPage)
+export const getAllInstructors = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("instructor")
+      .select(`
+        instructor_id,
+        user_id,
+        users:user_id (
+          id,
+          email,
+          first_name,
+          last_name
+        )
+      `)
+      .eq("is_deleted", false);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+  } catch (err) {
+    console.error("getAllInstructors error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+
+export const getCourseOfferingInstructors = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('course_offering_instructor')
+      .select(`
+        offering_id,
+        is_coordinator,
+        instructor:instructor_id (
+          instructor_id,
+          user_id,
+          users:user_id (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `);
+
+    if (error) throw error;
+
+    /*
+      Transform into:
+      {
+        [offering_id]: {
+          instructors: [...],
+          coordinator: {...}
+        }
+      }
+    */
+    const result = {};
+
+    for (const row of data || []) {
+      if (!result[row.offering_id]) {
+        result[row.offering_id] = {
+          instructors: [],
+          coordinator: null
+        };
+      }
+
+      const instructorData = {
+        instructor_id: row.instructor.instructor_id,
+        user_id: row.instructor.user_id,
+        name: `${row.instructor.users.first_name} ${row.instructor.users.last_name}`,
+        email: row.instructor.users.email,
+        is_coordinator: row.is_coordinator
+      };
+
+      result[row.offering_id].instructors.push(instructorData);
+
+      if (row.is_coordinator) {
+        result[row.offering_id].coordinator = instructorData;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    console.error('getCourseOfferingInstructors error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+
+// --- ALERTS CONTROLLER ---
+
+// Get all alerts (Public)
+export const getAlerts = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error('getAlerts error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Create an alert (Admin only)
+export const createAlert = async (req, res) => {
+  try {
+    const { content } = req.body;
+    const adminId = req.user.user_id; // from session
+
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content is required' });
+    }
+
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert([{ content, admin_id: adminId }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({ success: true, data });
+  } catch (err) {
+    console.error('createAlert error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Delete an alert (Admin only)
+export const deleteAlert = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.user_id;
+
+    // Delete only if id matches AND admin_id matches (ownership check)
+    const { data, error } = await supabase
+      .from('alerts')
+      .delete()
+      .eq('id', id)
+      .eq('admin_id', adminId)
+      .select();
+
+    if (error) throw error;
+
+    if (data.length === 0) {
+      return res.status(404).json({ success: false, message: "Alert not found or you don't have permission to delete it" });
+    }
+
+    return res.status(200).json({ success: true, message: 'Alert deleted' });
+  } catch (err) {
+    console.error('deleteAlert error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

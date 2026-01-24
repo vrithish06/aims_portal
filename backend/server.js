@@ -7,7 +7,6 @@ import pgSession from "connect-pg-simple";
 import { Pool } from "pg";
 import dotenv from "dotenv";
 import path from "path";
-import fs from "fs";
 import { fileURLToPath } from "url";
 
 import AimsRoutes from "./routes/AimsRoutes.js";
@@ -67,41 +66,57 @@ const isProduction = process.env.NODE_ENV === "production";
 
 console.log("[SESSION] Mode:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
 
-// Setup PostgreSQL session store
-let sessionStore;
+let sessionStore = null;
+
+// Production: Use PostgreSQL session store
+// DATABASE_URL should be set to Supabase PostgreSQL connection string in production
 if (isProduction && process.env.DATABASE_URL) {
-  // Production: Use PostgreSQL session store
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Required for Render PostgreSQL
-  });
-  
-  const PgSession = pgSession(session);
-  sessionStore = new PgSession({
-    pool,
-    tableName: "session"
-  });
-  
-  console.log("[SESSION] Using PostgreSQL session store");
-} else {
-  // Development: Use memory store (acceptable for local dev)
-  console.log("[SESSION] Using memory store (development only)");
+  try {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }, // Required for cloud PostgreSQL
+    });
+    
+    // Test the connection
+    pool.query("SELECT 1", (err) => {
+      if (err) {
+        console.error("[SESSION] PostgreSQL connection failed:", err.message);
+      } else {
+        console.log("[SESSION] ✅ PostgreSQL connection successful");
+      }
+    });
+    
+    const PgSession = pgSession(session);
+    sessionStore = new PgSession({
+      pool,
+      tableName: "session",
+      createTableIfMissing: true,
+    });
+    
+    console.log("[SESSION] Using PostgreSQL session store (production mode)");
+  } catch (err) {
+    console.error("[SESSION] Failed to initialize PostgreSQL store:", err.message);
+    console.log("[SESSION] Falling back to memory store");
+  }
+}
+
+if (!sessionStore) {
+  console.log("[SESSION] Using memory store for session persistence");
 }
 
 const sessionConfig = {
   name: "aims.sid",
   secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
-  resave: false,
-  saveUninitialized: false,
+  resave: true,  // ✅ MUST be true - saves session to DB on every request
+  saveUninitialized: true,  // ✅ MUST be true - saves new sessions immediately
   proxy: isProduction,  // Trust proxy headers on Render
+  rolling: true,  // Reset maxAge on every response (keeps session alive)
   cookie: {
     httpOnly: true,
     secure: isProduction,  // HTTPS on Render only
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: "lax",  // lax works for both localhost and production
     maxAge: 24 * 60 * 60 * 1000,  // 1 day
-    path: "/",
-    // For cross-site cookies, set domain explicitly in production
-    domain: isProduction ? (process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL).hostname : undefined) : undefined
+    path: "/"
   }
 };
 
@@ -120,6 +135,19 @@ console.log("[SESSION] Cookie config:", {
 });
 
 app.use(session(sessionConfig));
+
+/* ========================================
+   SESSION DEBUG MIDDLEWARE
+======================================== */
+app.use((req, res, next) => {
+  console.log(`[SESSION-DEBUG] ${req.method} ${req.path}`);
+  console.log(`  - Session ID: ${req.sessionID}`);
+  console.log(`  - Has Session: ${!!req.session}`);
+  console.log(`  - Has User: ${!!req.session?.user}`);
+  console.log(`  - User Email: ${req.session?.user?.email || 'none'}`);
+  console.log(`  - Cookie: ${req.headers.cookie ? 'yes' : 'no'}`);
+  next();
+});
 
 /* ========================================
    ROUTES ONLY (Frontend is deployed separately)

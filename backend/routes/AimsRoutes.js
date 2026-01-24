@@ -1,7 +1,7 @@
 import express from 'express';
 import supabase from '../config/db.js';
 import bcrypt from 'bcrypt';
-import { 
+import {
   getHelp,
   createUser,
   createCourse,
@@ -16,9 +16,11 @@ import {
   deleteStudent,
   createEnrollment,
   updateEnrollment,
-  createOffering,
+  // createOffering,
   loginUser,
   getEnrolledCourses,
+  getStudentCredits,
+  getStudentCGPA,
   getCourseOfferings,
   getMyOfferings,
   getAllOfferings,
@@ -30,7 +32,14 @@ import {
   cancelCourseOffering,
   getPendingInstructorEnrollments,
   getPendingAdvisorEnrollments,
-  updateAdvisorEnrollmentStatus
+  updateAdvisorEnrollmentStatus,
+  getAlerts,
+  createAlert,
+  deleteAlert,
+  searchCourses,
+  createOfferingWithInstructors,
+  getAllInstructors,
+  getCourseOfferingInstructors
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -52,7 +61,7 @@ router.get('/check-user/:email', async (req, res) => {
   try {
     const { email } = req.params;
     console.log(`[DEBUG] Checking user: ${email}`);
-    
+
     const { data, error } = await supabase
       .from("users")
       .select("id, email, first_name, last_name, role")
@@ -128,20 +137,18 @@ router.get('/enrollments-all', async (req, res) => {
 router.post('/login', loginUser);
 router.post('/logout', requireAuth, async (req, res) => {
   try {
-    const sid = req.sessionID;
-    // Remove session row from DB if present
-    if (sid) {
-      const { error: delErr } = await supabase.from('sessions').delete().eq('sid', sid);
-      if (delErr) console.error('[LOGOUT] Error deleting session row:', delErr);
-    }
-
     req.session.destroy((err) => {
       if (err) {
         console.error('[LOGOUT] Error destroying session:', err);
         return res.status(500).json({ success: false, message: 'Could not log out' });
       }
-      // Clear cookie using server's session name
-      res.clearCookie(process.env.SESSION_COOKIE_NAME || 'aims.sid');
+      // Clear cookie
+      res.clearCookie('aims.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
       res.json({ success: true, message: 'Logged out successfully' });
     });
   } catch (err) {
@@ -149,6 +156,7 @@ router.post('/logout', requireAuth, async (req, res) => {
     return res.status(500).json({ success: false, message: 'Could not log out' });
   }
 });
+
 router.get('/me', requireAuth, (req, res) => {
   console.log('[/ME] Called - Session ID:', req.sessionID, 'User:', req.user?.email);
   res.json({ success: true, data: req.user });
@@ -173,6 +181,12 @@ router.delete('/student/me', requireAuth, deleteStudent);
 // Enrolled courses for the currently authenticated student
 router.get('/student/enrolled-courses', requireAuth, getEnrolledCourses);
 
+// Student credits - fetch from student_credit table (with SGPA from cgpa_table)
+router.get('/student/credits', requireAuth, getStudentCredits);
+
+// Student CGPA/SGPA - fetch from cgpa_table
+router.get('/student/cgpa', requireAuth, getStudentCGPA);
+
 // Course offerings - public read (no auth required to see available courses)
 router.get('/course-offerings', getCourseOfferings);
 
@@ -191,8 +205,8 @@ router.get('/enrollment/pending-advisor', requireAuth, getPendingAdvisorEnrollme
 router.put('/enrollment/:enrollmentId/advisor-approval', requireAuth, updateAdvisorEnrollmentStatus);
 
 //create course
-// Instructor creates a course (uses session identity)
-router.post('/instructor/course', requireAuth, requireRole('instructor'), createCourse);
+// Admin creates a course (uses session identity)
+router.post('/admin/add-course', requireAuth, requireRole('admin'), createCourse);
 
 // Enrollment endpoints - any authenticated user can enroll/update their enrollment
 router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
@@ -205,8 +219,15 @@ router.post('/offering/:offeringId/drop', requireAuth, dropCourse);
 // Instructor/Admin update specific enrollment status for approvals
 router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updateEnrollmentStatus);
 
-// Instructor creates offerings for their courses
-router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
+// // Instructor creates offerings for their courses
+// router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
+
+// New endpoints for AddOfferingPage
+router.get('/courses/search', searchCourses);
+router.get('/instructors/all', requireAuth, getAllInstructors);
+router.get('/course/offering/instructors',requireAuth,getCourseOfferingInstructors);
+
+router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 
 // Instructor/Admin updates offering status (accept/reject proposed offerings)
 router.put('/offering/:offeringId/status', requireAuth, updateOfferingStatus);
@@ -218,19 +239,19 @@ router.post('/offering/:offeringId/cancel', requireAuth, requireRole('instructor
 router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), async (req, res) => {
   try {
     const { email, plainPassword } = req.params;
-    
+
     console.log(`[ADMIN] Fixing password for: ${email}`);
-    
+
     // Hash the plain password
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
-    
+
     // Update in database
     const { data, error } = await supabase
       .from('users')
       .update({ password_hashed: hashedPassword })
       .eq('email', email)
       .select();
-    
+
     if (error) {
       console.error('[ADMIN] Error updating password:', error);
       return res.status(500).json({
@@ -238,7 +259,7 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
         message: error.message
       });
     }
-    
+
     console.log(`[ADMIN] Password fixed for: ${email}`);
     res.status(200).json({
       success: true,
@@ -254,12 +275,9 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
   }
 });
 
-router.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("aims.sid");
-    res.json({ success: true });
-  });
-});
+// --- ALERT ROUTES ---
+router.get('/alerts', getAlerts); // Public read
+router.post('/alerts', requireAuth, requireRole('admin'), createAlert); // Admin create
+router.delete('/alerts/:id', requireAuth, requireRole('admin'), deleteAlert); // Admin delete
 
 export default router;
-//kumarnaidu//tharun//"rithish"

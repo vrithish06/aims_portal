@@ -45,6 +45,17 @@ function AddUserPage() {
     { value: 'other', label: 'Other' }
   ];
 
+    // Check authorization
+  if (user?.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="alert alert-error w-96">
+          <span>You do not have permission to add users. Only admin can add users.</span>
+        </div>
+      </div>
+    );
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
