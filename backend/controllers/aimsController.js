@@ -1105,7 +1105,7 @@ export const withdrawCourse = async (req, res) => {
     // Update enrollment status to withdrawn
     const { data, error } = await supabase
       .from("course_enrollment")
-      .update({ enrol_status: 'withdrawn' })
+      .update({ enrol_status: 'student withdrawn' })
       .eq('enrollment_id', enrollment.enrollment_id)
       .select()
       .single();
@@ -1150,7 +1150,7 @@ export const dropCourse = async (req, res) => {
     // Update enrollment status to dropped
     const { data, error } = await supabase
       .from("course_enrollment")
-      .update({ enrol_status: 'dropped' })
+      .update({ enrol_status: 'student dropped' })
       .eq('enrollment_id', enrollment.enrollment_id)
       .select()
       .single();
@@ -1231,6 +1231,7 @@ export const getPendingAdvisorEnrollments = async (req, res) => {
       .single();
 
     if (instructorError || !instructorData) {
+      console.log("Advisor check - No instructor found for user_id:", userId);
       return res.status(404).json({
         success: false,
         message: "Instructor record not found"
@@ -1245,6 +1246,7 @@ export const getPendingAdvisorEnrollments = async (req, res) => {
       .single();
 
     if (advisorError || !advisorData) {
+      console.log("Advisor check - No faculty advisor record found for instructor_id:", instructorData.instructor_id);
       return res.status(404).json({
         success: false,
         message: "Faculty advisor record not found. You are not assigned as an advisor."
@@ -1252,6 +1254,7 @@ export const getPendingAdvisorEnrollments = async (req, res) => {
     }
 
     const { for_degree, batch } = advisorData;
+    console.log("Advisor info - degree:", for_degree, "batch:", batch);
 
     // Get all course offerings for the degree this advisor manages
     const { data: offerings, error: offeringsError } = await supabase
@@ -1263,6 +1266,7 @@ export const getPendingAdvisorEnrollments = async (req, res) => {
     if (offeringsError) throw offeringsError;
 
     const offeringIds = offerings.map(o => o.offering_id);
+    console.log("Found offerings for advisor batch/degree:", offeringIds);
 
     if (offeringIds.length === 0) {
       return res.status(200).json({
@@ -1312,8 +1316,19 @@ export const getPendingAdvisorEnrollments = async (req, res) => {
 
     if (enrollmentsError) throw enrollmentsError;
 
+    console.log("Total enrollments found with pending advisor approval:", enrollments?.length || 0);
+    console.log("Raw enrollments data:", JSON.stringify(enrollments, null, 2));
+
+    // Filter enrollments to only include students in the advisor's batch/degree
+    const filteredEnrollments = (enrollments || []).filter(enrollment => {
+      const student = enrollment.student;
+      return student && student.degree === for_degree;
+    });
+
+    console.log("Filtered enrollments (matching degree):", filteredEnrollments.length);
+
     // Flatten the response
-    const flattenedEnrollments = (enrollments || []).map(enrollment => ({
+    const flattenedEnrollments = filteredEnrollments.map(enrollment => ({
       ...enrollment,
       offering: enrollment.course_offering,
       course: enrollment.course_offering?.course
@@ -1330,6 +1345,107 @@ export const getPendingAdvisorEnrollments = async (req, res) => {
 
   } catch (err) {
     console.error("getPendingAdvisorEnrollments error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Advisor approval endpoint - only for advisors to approve/reject pending advisor approval requests
+export const updateAdvisorEnrollmentStatus = async (req, res) => {
+  const { enrollmentId } = req.params;
+  const { enrol_status } = req.body;
+  const userId = req.user?.user_id;
+
+  try {
+    // Get the instructor (advisor) record
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id")
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
+    // Get faculty advisor record to verify they're an advisor
+    const { data: advisorData, error: advisorError } = await supabase
+      .from("faculty_advisor")
+      .select("for_degree, batch, advisor_id")
+      .eq('instructor_id', instructorData.instructor_id)
+      .single();
+
+    if (advisorError || !advisorData) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not assigned as a faculty advisor"
+      });
+    }
+
+    // Get the enrollment with student info
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from("course_enrollment")
+      .select(`
+        enrollment_id,
+        student_id,
+        enrol_status,
+        student:student_id (
+          degree,
+          branch
+        )
+      `)
+      .eq('enrollment_id', enrollmentId)
+      .single();
+
+    if (enrollmentError || !enrollment) {
+      return res.status(404).json({
+        success: false,
+        message: "Enrollment not found"
+      });
+    }
+
+    // Verify the student belongs to this advisor's batch/degree
+    if (!enrollment.student || enrollment.student.degree !== advisorData.for_degree) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only approve enrollments for students in your assigned degree"
+      });
+    }
+
+    // Verify enrollment is in pending advisor approval status
+    if (enrollment.enrol_status !== 'pending advisor approval') {
+      return res.status(400).json({
+        success: false,
+        message: "This enrollment is not pending advisor approval"
+      });
+    }
+
+    // Update enrollment status
+    const dbEnrolStatus = enrol_status.replace(/_/g, ' ');
+    const { data: updatedEnrollment, error: updateError } = await supabase
+      .from("course_enrollment")
+      .update({ enrol_status: dbEnrolStatus })
+      .eq('enrollment_id', enrollmentId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    console.log("Advisor approval - Enrollment", enrollmentId, "updated to:", dbEnrolStatus);
+
+    return res.status(200).json({
+      success: true,
+      message: `Enrollment ${dbEnrolStatus === 'enrolled' ? 'approved' : 'rejected'}`,
+      data: updatedEnrollment
+    });
+
+  } catch (err) {
+    console.error("updateAdvisorEnrollmentStatus error:", err);
     return res.status(500).json({
       success: false,
       message: err.message

@@ -29,8 +29,13 @@ function AdvisorActionsPage() {
       setLoading(true);
       setError(null);
       const response = await axiosClient.get('/enrollment/pending-advisor');
-      const enrollments = response.data.data || [];
+      let enrollments = response.data.data || [];
       setAdvisorInfo(response.data.advisorInfo);
+      
+      // Filter only pending advisor approval status
+      enrollments = enrollments.filter(e => e.enrol_status === 'pending advisor approval');
+      
+      console.log('Filtered enrollments for advisor approval:', enrollments);
       
       // Group enrollments by offering and course
       const groupedByOffering = enrollments.reduce((acc, enrollment) => {
@@ -199,7 +204,10 @@ function AdvisorActionsDetailPage() {
       setLoading(true);
       setError(null);
       const response = await axiosClient.get('/enrollment/pending-advisor');
-      const allEnrollments = response.data.data || [];
+      let allEnrollments = response.data.data || [];
+      
+      // Filter only pending advisor approval status
+      allEnrollments = allEnrollments.filter(e => e.enrol_status === 'pending advisor approval');
       
       // Filter for this offering
       const offeringEnrollments = allEnrollments.filter(
@@ -210,6 +218,7 @@ function AdvisorActionsDetailPage() {
         setOffering(offeringEnrollments[0].offering);
       }
 
+      console.log('Enrollments for detail page:', offeringEnrollments);
       setEnrollments(offeringEnrollments);
     } catch (err) {
       console.error('Error fetching enrollments:', err);
@@ -224,8 +233,9 @@ function AdvisorActionsDetailPage() {
 
     try {
       setActionUpdating(enrollmentId);
+      console.log('Approving enrollment:', enrollmentId);
       const response = await axiosClient.put(
-        `/offering/${offeringId}/enrollments/${enrollmentId}`,
+        `/enrollment/${enrollmentId}/advisor-approval`,
         { enrol_status: 'enrolled' }
       );
 
@@ -248,8 +258,9 @@ function AdvisorActionsDetailPage() {
 
     try {
       setActionUpdating(enrollmentId);
+      console.log('Rejecting enrollment:', enrollmentId);
       const response = await axiosClient.put(
-        `/offering/${offeringId}/enrollments/${enrollmentId}`,
+        `/enrollment/${enrollmentId}/advisor-approval`,
         { enrol_status: 'advisor rejected' }
       );
 
@@ -337,7 +348,13 @@ function AdvisorActionsDetailPage() {
                     <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
                       {enrollment.enrol_type}
                     </span>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      Degree: {enrollment.student?.degree}
+                    </span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: <span className="font-semibold text-orange-600">{enrollment.enrol_status}</span>
+                  </p>
                 </div>
 
                 <div className="flex gap-2">
