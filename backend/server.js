@@ -8,6 +8,12 @@ import { Pool } from "pg";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import dns from "node:dns";
+
+// Force IPv4 to avoid ENETUNREACH on specific platforms (like Render) connecting to Supabase
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 import AimsRoutes from "./routes/AimsRoutes.js";
 
@@ -56,6 +62,8 @@ app.use(
   })
 );
 
+app.set("trust proxy", 1); // Trust first proxy (Render load balancer)
+
 app.use(helmet());
 app.use(morgan("dev"));
 
@@ -76,7 +84,7 @@ if (isProduction && process.env.DATABASE_URL) {
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }, // Required for cloud PostgreSQL
     });
-    
+
     // Test the connection
     pool.query("SELECT 1", (err) => {
       if (err) {
@@ -85,14 +93,14 @@ if (isProduction && process.env.DATABASE_URL) {
         console.log("[SESSION] ✅ PostgreSQL connection successful");
       }
     });
-    
+
     const PgSession = pgSession(session);
     sessionStore = new PgSession({
       pool,
       tableName: "session",
       createTableIfMissing: true,
     });
-    
+
     console.log("[SESSION] Using PostgreSQL session store (production mode)");
   } catch (err) {
     console.error("[SESSION] Failed to initialize PostgreSQL store:", err.message);

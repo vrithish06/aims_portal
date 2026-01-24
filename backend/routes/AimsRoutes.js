@@ -38,7 +38,8 @@ import {
   searchCourses,
   createOfferingWithInstructors,
   getAllInstructors,
-  getCourseOfferingInstructors
+  getCourseOfferingInstructors,
+  getOfferingDetails
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -195,6 +196,7 @@ router.get('/offering/my-offerings', requireAuth, requireRole('instructor'), get
 // All offerings - for admin to manage all courses
 router.get('/offering/all-offerings', requireAuth, requireRole('admin'), getAllOfferings);
 
+router.get('/offering/:offeringId', getOfferingDetails);
 router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
 
 router.get('/enrollment/pending-instructor', requireAuth, getPendingInstructorEnrollments);
@@ -221,7 +223,7 @@ router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updat
 // New endpoints for AddOfferingPage
 router.get('/courses/search', searchCourses);
 router.get('/instructors/all', requireAuth, getAllInstructors);
-router.get('/course/offering/instructors',requireAuth,getCourseOfferingInstructors);
+router.get('/course/offering/instructors', requireAuth, getCourseOfferingInstructors);
 
 router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 

@@ -978,11 +978,16 @@ export const getCourseOfferings = async (req, res) => {
       }
     }
 
-    // Enrich offerings with instructor and dept_name data
-    const enrichedData = offerings.map(offering => ({
-      ...offering,
-      dept_name: instructorMap[offering.offering_id]?.coordinator?.branch || 'N/A'
-    }));
+    // Enrichment offerings with instructor and dept_name data
+    const enrichedData = offerings.map(offering => {
+      const info = instructorMap[offering.offering_id] || { coordinator: null, instructors: [] };
+      return {
+        ...offering,
+        dept_name: info.coordinator?.branch || 'N/A',
+        instructor: info.coordinator,
+        instructors: info.instructors
+      };
+    });
 
     console.log(
       '[getCourseOfferings] Success! Found',
@@ -1032,7 +1037,7 @@ export const getMyOfferings = async (req, res) => {
     if (ioError) throw ioError;
 
     const offeringIds = instructorOfferings.map(io => io.offering_id);
-    
+
     if (offeringIds.length === 0) {
       return res.status(200).json({
         success: true,
@@ -1165,6 +1170,83 @@ export const getAllOfferings = async (req, res) => {
 
   } catch (err) {
     console.error("getAllOfferings error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get a single offering with all its details
+export const getOfferingDetails = async (req, res) => {
+  const { offeringId } = req.params;
+
+  try {
+    const { data: offering, error } = await supabase
+      .from("course_offering")
+      .select(`
+        *,
+        course:course_id (
+          code,
+          title,
+          ltp
+        )
+      `)
+      .eq("offering_id", offeringId)
+      .eq("is_deleted", false)
+      .single();
+
+    if (error || !offering) {
+      return res.status(404).json({
+        success: false,
+        message: "Offering not found"
+      });
+    }
+
+    // Fetch instructors for this offering
+    const { data: offeringInstructors, error: instrError } = await supabase
+      .from('course_offering_instructor')
+      .select(`
+        is_coordinator,
+        instructor:instructor_id (
+          instructor_id,
+          branch,
+          users:user_id (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
+      .eq('offering_id', offeringId);
+
+    if (instrError) {
+      console.error('[getOfferingDetails] Instructors Error:', instrError);
+    }
+
+    const instructors = (offeringInstructors || []).map(row => ({
+      instructor_id: row.instructor.instructor_id,
+      name: `${row.instructor.users.first_name} ${row.instructor.users.last_name}`,
+      email: row.instructor.users.email,
+      branch: row.instructor.branch,
+      is_coordinator: row.is_coordinator,
+      users: row.instructor.users
+    }));
+
+    const coordinator = instructors.find(i => i.is_coordinator) || instructors[0];
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...offering,
+        instructors,
+        instructor: coordinator,
+        dept_name: coordinator?.branch || 'N/A'
+      }
+    });
+  } catch (err) {
+    console.error("getOfferingDetails error:", err);
     return res.status(500).json({
       success: false,
       message: err.message
