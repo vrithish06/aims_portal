@@ -38,44 +38,44 @@ function AddOfferingPage() {
   const instructorRef = useRef(null);
 
   const offeringTypeOptions = [
-  "Core",
-  "Program Elective",
-  "Open Elective"
-];
+    "Core",
+    "Program Elective",
+    "Open Elective"
+  ];
 
-    const handleTargetChange = (index, field, value) => {
+  const handleTargetChange = (index, field, value) => {
     setTargets(prev =>
-        prev.map((t, i) =>
+      prev.map((t, i) =>
         i === index ? { ...t, [field]: value } : t
-        )
+      )
     );
-    };
+  };
 
-    const toggleOfferingType = (index, type) => {
+  const toggleOfferingType = (index, type) => {
     setTargets(prev =>
-        prev.map((t, i) =>
+      prev.map((t, i) =>
         i === index
-            ? {
-                ...t,
-                offering_type: t.offering_type.includes(type)
-                ? t.offering_type.filter(v => v !== type)
-                : [...t.offering_type, type]
-            }
-            : t
-        )
+          ? {
+            ...t,
+            offering_type: t.offering_type.includes(type)
+              ? t.offering_type.filter(v => v !== type)
+              : [...t.offering_type, type]
+          }
+          : t
+      )
     );
-    };
+  };
 
-    const addTarget = () => {
+  const addTarget = () => {
     setTargets([
-        ...targets,
-        { batch: "", degree: "", branch: "", offering_type: [] }
+      ...targets,
+      { batch: "", degree: "", branch: "", offering_type: [] }
     ]);
-    };
+  };
 
-    const removeTarget = (index) => {
+  const removeTarget = (index) => {
     setTargets(targets.filter((_, i) => i !== index));
-    };
+  };
 
 
   // Close dropdowns on outside click
@@ -190,28 +190,27 @@ function AddOfferingPage() {
     );
   };
 
-    const filteredInstructors = availableInstructors.filter((instr) => {
-        // Exclude already selected instructors
-        if (
-            selectedInstructors.some(
-            (s) => s.instructor_id === instr.instructor_id
-            )
-        ) {
-            return false;
-        }
+  const filteredInstructors = availableInstructors.filter((instr) => {
+    // Exclude already selected instructors
+    if (
+      selectedInstructors.some(
+        (s) => s.instructor_id === instr.instructor_id
+      )
+    ) {
+      return false;
+    }
 
-        const fullName = `${instr.users?.first_name || ""} ${
-            instr.users?.last_name || ""
-        }`.toLowerCase();
+    const fullName = `${instr.users?.first_name || ""} ${instr.users?.last_name || ""
+      }`.toLowerCase();
 
-        const email = instr.users?.email?.toLowerCase() || "";
-        const query = instructorSearch.toLowerCase();
+    const email = instr.users?.email?.toLowerCase() || "";
+    const query = instructorSearch.toLowerCase();
 
-        // If search is empty, show all remaining instructors
-        if (!query) return true;
+    // If search is empty, show all remaining instructors
+    if (!query) return true;
 
-        return fullName.includes(query) || email.includes(query);
-    });
+    return fullName.includes(query) || email.includes(query);
+  });
 
 
   // Submit form
@@ -246,18 +245,18 @@ function AddOfferingPage() {
       const response = await axiosClient.post(
         "/offering/create-with-instructors",
         {
-            course_id: selectedCourse.course_id,
-            acad_session,
-            status,
-            slot: slot || null,
-            section: section || null,
-            targets, // ✅ ADD THIS
-            instructors: selectedInstructors.map(i => ({
+          course_id: selectedCourse.course_id,
+          acad_session,
+          status,
+          slot: slot || null,
+          section: section || null,
+          targets, // ✅ ADD THIS
+          instructors: selectedInstructors.map(i => ({
             instructor_id: i.instructor_id,
             is_coordinator: i.is_coordinator
-            }))
+          }))
         }
-        );
+      );
 
 
       if (response.data.success) {
@@ -387,7 +386,7 @@ function AddOfferingPage() {
                 type="text"
                 value={acad_session}
                 onChange={(e) => setAcadSession(e.target.value)}
-                placeholder="e.g., Fall 2024, Spring 2025"
+                placeholder="e.g., 2026-I , 2026-II"
                 className="input input-bordered w-full"
                 required
               />
@@ -515,11 +514,10 @@ function AddOfferingPage() {
                           onClick={() =>
                             handleToggleCoordinator(instructor.instructor_id)
                           }
-                          className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 transition ${
-                            instructor.is_coordinator
+                          className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 transition ${instructor.is_coordinator
                               ? "bg-green-100 text-green-800 hover:bg-green-200"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
+                            }`}
                         >
                           {instructor.is_coordinator ? (
                             <>
@@ -555,90 +553,89 @@ function AddOfferingPage() {
               </div>
             </div>
 
-             {/* Targets */}
+            {/* Targets */}
             <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Targets (Batch / Degree / Branch / Type)
-            </label>
+              </label>
 
-            <div className="space-y-4">
+              <div className="space-y-4">
                 {targets.map((target, idx) => (
-                <div
+                  <div
                     key={idx}
                     className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3"
-                >
+                  >
                     <div className="grid grid-cols-3 gap-3">
-                    <input
+                      <input
                         type="number"
                         placeholder="Batch (e.g. 2024)"
                         value={target.batch}
                         onChange={(e) =>
-                        handleTargetChange(idx, "batch", Number(e.target.value))
+                          handleTargetChange(idx, "batch", Number(e.target.value))
                         }
                         className="input input-bordered"
-                    />
+                      />
 
-                    <input
+                      <input
                         type="text"
                         placeholder="Degree (BTech / MTech)"
                         value={target.degree}
                         onChange={(e) =>
-                        handleTargetChange(idx, "degree", e.target.value)
+                          handleTargetChange(idx, "degree", e.target.value)
                         }
                         className="input input-bordered"
-                    />
+                      />
 
-                    <input
+                      <input
                         type="text"
                         placeholder="Branch (CSE / EE)"
                         value={target.branch}
                         onChange={(e) =>
-                        handleTargetChange(idx, "branch", e.target.value)
+                          handleTargetChange(idx, "branch", e.target.value)
                         }
                         className="input input-bordered"
-                    />
+                      />
                     </div>
 
                     {/* Offering Type */}
                     <div className="flex gap-2 flex-wrap">
-                    {offeringTypeOptions.map(type => (
+                      {offeringTypeOptions.map(type => (
                         <button
-                        key={type}
-                        type="button"
-                        onClick={() => toggleOfferingType(idx, type)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                            target.offering_type.includes(type)
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-gray-700 border-gray-300"
-                        }`}
+                          key={type}
+                          type="button"
+                          onClick={() => toggleOfferingType(idx, type)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium border ${target.offering_type.includes(type)
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-gray-700 border-gray-300"
+                            }`}
                         >
-                        {type}
+                          {type}
                         </button>
-                    ))}
+                      ))}
                     </div>
 
                     {targets.length > 1 && (
-                    <button
+                      <button
                         type="button"
                         onClick={() => removeTarget(idx)}
                         className="text-xs text-red-600 hover:underline"
-                    >
+                      >
                         Remove target
-                    </button>
+                      </button>
                     )}
-                </div>
+                  </div>
                 ))}
-            </div>
+              </div>
 
-            <button
+              <button
                 type="button"
                 onClick={addTarget}
                 className="mt-3 text-sm text-blue-600 hover:underline"
-            >
+              >
                 + Add another target
-            </button>
+              </button>
             </div>
-   
+
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">
               <button
