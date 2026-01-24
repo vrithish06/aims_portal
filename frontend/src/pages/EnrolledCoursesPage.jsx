@@ -113,7 +113,7 @@ function EnrolledCoursesPage() {
     }
   };
 
-  const handleDrop = async (enrollment) => {
+  const handleDrop = async () => {
     const enrollment = selectedEnrollment || courses.find(c => c.id === enrollmentId);
     if (!enrollment) return;
 
