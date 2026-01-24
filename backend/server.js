@@ -1,22 +1,4 @@
 import dns from "node:dns";
-
-// ⚠️ AGGRESSIVE FIX: Monkey-patch dns.lookup to force IPv4
-// This is necessary because some environments (like Render) resolve Supabase to IPv6
-// but fail to route the traffic (ENETUNREACH), and setDefaultResultOrder('ipv4first')
-// is sometimes ignored by node-postgres.
-const originalLookup = dns.lookup;
-dns.lookup = (hostname, options, callback) => {
-  if (typeof options === 'function') {
-    callback = options;
-    options = { family: 4 };
-  } else if (typeof options === 'object') {
-    options = { ...options, family: 4 };
-  } else if (typeof options === 'undefined') {
-    options = { family: 4 };
-  }
-  return originalLookup(hostname, options, callback);
-};
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -29,6 +11,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import AimsRoutes from "./routes/AimsRoutes.js";
+
+// Force IPv4 to avoid ENETUNREACH on specific platforms (like Render) connecting to Supabase
+if (dns && dns.setDefaultResultOrder) {
+  try {
+    dns.setDefaultResultOrder('ipv4first');
+  } catch (e) { /* ignore */ }
+}
 
 dotenv.config();
 
@@ -93,18 +82,17 @@ let sessionStore = null;
 // DATABASE_URL should be set to Supabase PostgreSQL connection string in production
 if (isProduction && process.env.DATABASE_URL) {
   try {
+    // Force IPv4 for the pool connection
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }, // Required for cloud PostgreSQL
+      family: 4 // Force IPv4 in socket connection
     });
 
     // Test the connection
     pool.query("SELECT 1", (err) => {
       if (err) {
         console.error("[SESSION] PostgreSQL connection failed:", err.message);
-        console.error("[SESSION] Check DATABASE_URL and Ensure Allow Access from 0.0.0.0/0 is enabled in Supabase");
-        // Although failed, session logic likely proceeds with a broken store. 
-        // In real prod, this should crash or fallback, but sessionStore is already constructed below.
       } else {
         console.log("[SESSION] ✅ PostgreSQL connection successful");
       }
@@ -138,18 +126,15 @@ const sessionConfig = {
   cookie: {
     httpOnly: true,
     secure: isProduction,  // HTTPS on Render only
-    sameSite: isProduction ? "none" : "lax", // Fix for cross-site cookie behavior in some prod setups? No, stick to "lax" or "none" if cross-domain. Try "none" if frontend/backend domains differ.
-    // RECOMMENDATION: If Frontend and Backend are on different Render domains (e.g. onrender.com subdomains), 'sameSite: none' + 'secure: true' is REQUIRED.
-    // Changing to 'none' for maximum compatibility given 'trust proxy' is set. 
+    sameSite: isProduction ? "none" : "lax", // 'none' for cross-site if needed
     maxAge: 24 * 60 * 60 * 1000,  // 1 day
     path: "/"
   }
 };
 
-// If using sameSite: 'none', secure MUST be true.
 if (isProduction) {
-  sessionConfig.cookie.sameSite = 'none'; // Safer for cross-subdomain
   sessionConfig.cookie.secure = true;
+  sessionConfig.cookie.sameSite = 'none';
 }
 
 // Add session store if available
