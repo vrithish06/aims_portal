@@ -8,7 +8,6 @@ import {
   Check,
   X,
   AlertCircle,
->>>>>>> b7e6fca05405b374b5edb7c6cc27280095c287ed
   Mail,
   GraduationCap,
   UserCheck,
@@ -69,12 +68,10 @@ function FilterDropdown({ label, options, selected, setSelected }) {
 }
 
 function MyPendingWorksPage() {
-  // --- AUTH & NAVIGATION ---
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
 
-  // --- STATE MANAGEMENT ---
   const [pendingAsInstructor, setPendingAsInstructor] = useState([]);
   const [pendingAsAdvisor, setPendingAsAdvisor] = useState([]);
   const [isAdvisor, setIsAdvisor] = useState(false);
@@ -87,7 +84,6 @@ function MyPendingWorksPage() {
   const [courseFilter, setCourseFilter] = useState(new Set());
   const [typeFilter, setTypeFilter] = useState(new Set());
 
-  // --- INITIAL LOAD & PROTECTION ---
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'instructor') {
       navigate('/');
@@ -96,7 +92,6 @@ function MyPendingWorksPage() {
     fetchMyPendingWorks();
   }, [isAuthenticated, user, navigate]);
 
-  // --- API: FETCH WORKS ---
   const fetchMyPendingWorks = async () => {
     try {
       setLoading(true);
@@ -195,7 +190,6 @@ function MyPendingWorksPage() {
     }
   };
 
-  // --- API: REJECT LOGIC ---
   const handleReject = async (enrollment, section) => {
     if (actionUpdating) return;
     try {
@@ -250,37 +244,6 @@ function MyPendingWorksPage() {
     }
   };
 
-<<<<<<< HEAD
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-10">
-      <div className="max-w-[1600px] mx-auto">
-        
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <UserCheck className="w-8 h-8 text-blue-600" />
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">My Pending Works</h1>
-            </div>
-            <p className="text-slate-500 font-bold">Total works managed: {pendingAsInstructor.length + (isAdvisor ? pendingAsAdvisor.length : 0)}</p>
-          </div>
-        </div>
-
-        {/* Global Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-10">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-extrabold text-xs shadow-sm hover:bg-gray-50 transition-all">
-            <Filter className="w-4 h-4" /> Filters
-          </button>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search by student name or course code..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 shadow-sm font-medium text-sm"
-            />
-=======
   const renderTable = (data, section) => {
     if (data.length === 0) {
       return (
@@ -467,16 +430,6 @@ function MyPendingWorksPage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// Simple Placeholder for empty sections
-function EmptyState({ message }) {
-  return (
-    <div className="bg-white border-2 border-dashed border-gray-200 rounded-xl p-10 text-center">
-      <Check className="w-10 h-10 text-green-400 mx-auto mb-2 opacity-50" />
-      <p className="text-gray-400 font-bold text-xs uppercase tracking-tight">{message}</p>
     </div>
   );
 }
