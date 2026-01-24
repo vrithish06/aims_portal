@@ -13,11 +13,16 @@ import MyOfferingsPage from "./pages/MyOfferingsPage";
 import AddUserPage from "./pages/AddUserPage";
 import ActionPendingPage from "./pages/ActionPendingPage";
 import AdvisorActionsPage from "./pages/AdvisorActionsPage";
+import FacultyAdviseesPage from "./pages/FacultyAdviseesPage";
 import AdminAlertsPage from "./pages/AdminAlertsPage";
 import AlertsPage from "./pages/AlertsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
 import useAuthStore from "./store/authStore";
+import StudentAdvisorDetailPage from './pages/StudentAdvisorDetailPage';
+import MyPendingWorksPage from './pages/MyPendingWorksPage';
+
+
 
 function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth)
@@ -49,11 +54,14 @@ function App() {
         <Route path="/action-pending" element={<ProtectedRoute><ActionPendingPage /></ProtectedRoute>} />
         <Route path="/action-pending/:offeringId" element={<ProtectedRoute><ActionPendingPage /></ProtectedRoute>} />
         <Route path="/advisor-actions" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
-        <Route path="/advisor-actions/:offeringId" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
+        <Route path="/my-pending-works" element={<ProtectedRoute><MyPendingWorksPage /></ProtectedRoute>} />
+        <Route path="/advisor-actions/:studentId" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
+        <Route path="/faculty-advisees" element={<ProtectedRoute><FacultyAdviseesPage /></ProtectedRoute>} />
         <Route path="/admin-alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
         <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
         <Route path="/add-user" element={<ProtectedRoute><AddUserPage /></ProtectedRoute>} />
         <Route path="/product/:id" element={<ProductPage />} />
+        <Route path="/faculty-advisees/:studentId" element={<StudentAdvisorDetailPage />} />
       </Routes>
     </div>
   )

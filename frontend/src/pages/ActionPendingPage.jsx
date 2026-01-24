@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import axiosClient from '../api/axiosClient';
 import toast from 'react-hot-toast';
-import { ChevronDown, BookOpen, Clock, Check, X, ArrowLeft, Users } from 'lucide-react';
+import { ChevronDown, BookOpen, Clock, Check, X, ArrowLeft, Users, ArrowRight } from 'lucide-react';
 
 // Main Page - List of Courses
 function ActionPendingPage() {
@@ -81,41 +81,61 @@ function ActionPendingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
-      <div className="container mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Pending Actions
-          </h1>
-          <p className="text-gray-600">
-            Manage student enrollment requests
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4">
+      <div className="container mx-auto max-w-7xl">
+        {/* Header Section */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+              <Users className="w-8 h-8 text-blue-400" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-white">
+              Pending Actions
+            </h1>
+          </div>
+          <p className="text-gray-400 text-lg ml-16">
+            Review and approve student enrollment requests
           </p>
         </div>
 
         {/* Loading State */}
         {loading && (
-          <div className="flex justify-center items-center py-12">
-            <div className="loading loading-spinner loading-lg text-blue-600"></div>
+          <div className="flex justify-center items-center py-20">
+            <div className="flex flex-col items-center gap-4">
+              <div className="loading loading-spinner loading-lg text-blue-400"></div>
+              <p className="text-gray-400">Loading enrollment requests...</p>
+            </div>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="alert alert-error mb-6">
-            <span>{error}</span>
+          <div className="bg-red-900/20 border border-red-500/50 text-red-200 px-6 py-4 rounded-lg mb-8">
+            <p className="font-semibold">Error loading data</p>
+            <p className="text-sm mt-1">{error}</p>
           </div>
         )}
 
-        {/* No Enrollments */}
+        {/* No Enrollments - Empty State */}
         {!loading && filteredOfferings.length === 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <Clock className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 text-lg">
-              {showPendingOnly
-                ? 'No pending enrollment requests'
-                : 'No enrollments waiting for advisor approval'}
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-12 text-center backdrop-blur">
+            <div className="flex justify-center mb-4">
+              <div className="p-4 bg-slate-700/50 rounded-full">
+                <Clock className="w-12 h-12 text-gray-500" />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">No Pending Requests</h3>
+            <p className="text-gray-400 max-w-md mx-auto">
+              You're all caught up! There are no pending student enrollment requests waiting for your action right now.
             </p>
+            <div className="mt-8 flex justify-center">
+              <button 
+                onClick={() => navigate('/my-offerings')}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Back to My Offerings
+              </button>
+            </div>
           </div>
         )}
 
@@ -126,44 +146,52 @@ function ActionPendingPage() {
               <div
                 key={offering.offering_id}
                 onClick={() => handleCourseClick(offering)}
-                className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden cursor-pointer"
+                className="group bg-slate-800/50 backdrop-blur border border-slate-700/50 hover:border-blue-500/50 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
               >
                 {/* Card Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold mb-2">{offering.course?.title}</h3>
-                      <p className="text-blue-100 text-sm">{offering.course?.code}</p>
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold mb-1 truncate group-hover:text-blue-100 transition-colors">{offering.course?.title}</h3>
+                      <p className="text-blue-200 text-sm font-mono">{offering.course?.code}</p>
+                    </div>
+                    <div className="flex-shrink-0 p-2 bg-white/10 rounded-lg">
+                      <BookOpen className="w-5 h-5 text-blue-100" />
                     </div>
                   </div>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-6">
-                  <div className="space-y-4">
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 rounded-lg p-3">
-                        <p className="text-gray-600 text-xs font-semibold">PENDING</p>
-                        <p className="text-2xl font-bold text-blue-600">{offering.enrollments.length}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-gray-600 text-xs font-semibold">LTP</p>
-                        <p className="text-lg font-bold text-gray-800">{offering.course?.ltp}</p>
-                      </div>
+                <div className="p-6 space-y-4">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs font-semibold mb-1">PENDING</p>
+                      <p className="text-2xl font-bold text-blue-400">{offering.enrollments.length}</p>
                     </div>
-
-                    {/* Info */}
-                    <div className="text-sm text-gray-600">
-                      <p><span className="font-semibold">Session:</span> {offering.offering?.acad_session}</p>
-                      <p><span className="font-semibold">Section:</span> {offering.offering?.section || 'N/A'}</p>
+                    <div className="bg-slate-700/50 border border-slate-600/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs font-semibold mb-1">CREDITS</p>
+                      <p className="text-lg font-bold text-gray-200">{offering.course?.ltp}</p>
                     </div>
-
-                    {/* Button */}
-                    <button className="w-full btn btn-sm btn-primary text-white">
-                      View Requests
-                    </button>
                   </div>
+
+                  {/* Info */}
+                  <div className="space-y-2 pt-2 border-t border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 text-xs font-semibold min-w-20">Session:</span>
+                      <span className="text-gray-200 text-sm font-mono">{offering.offering?.acad_session}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 text-xs font-semibold min-w-20">Section:</span>
+                      <span className="text-gray-200 text-sm">{offering.offering?.section || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  {/* Button */}
+                  <button className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group/btn">
+                    Review Requests
+                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -193,16 +221,22 @@ function ActionPendingDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosClient.get('/enrollment/pending-instructor');
-      const allEnrollments = response.data.data || [];
       
-      // Get all enrollments for this offering
-      const offeringEnrollments = allEnrollments.filter(
+      // Fetch both pending instructor AND pending advisor enrollments
+      const instructorResponse = await axiosClient.get('/enrollment/pending-instructor');
+      const instructorEnrollments = instructorResponse.data.data || [];
+      
+      console.log('Instructor enrollments fetched:', instructorEnrollments.length);
+      
+      // Get all enrollments for this offering from the instructor endpoint
+      const offeringEnrollments = instructorEnrollments.filter(
         e => e.offering_id === parseInt(offeringId)
       );
 
-      if (allEnrollments.length > 0) {
-        const courseInfo = allEnrollments.find(e => e.offering_id === parseInt(offeringId));
+      console.log('Filtered to offering:', parseInt(offeringId), 'count:', offeringEnrollments.length);
+
+      if (instructorEnrollments.length > 0) {
+        const courseInfo = instructorEnrollments.find(e => e.offering_id === parseInt(offeringId));
         if (courseInfo) {
           setOffering(courseInfo.offering);
         }

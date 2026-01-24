@@ -74,15 +74,21 @@ const useAuthStore = create((set) => ({
   // Logout user
   logout: async () => {
     try {
-      await axiosClient.post("/logout");
+      // Try to logout on server, but don't fail if session is already expired
+      await axiosClient.post("/logout").catch((error) => {
+        // If logout fails (e.g., session already expired), that's okay
+        console.log("Logout API call failed (may be expected):", error?.message);
+      });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      // Clear local state regardless of API success
+      // Always clear local state regardless of API success
       set({
         user: null,
         isAuthenticated: false,
       });
+      // Force navigation to home page
+      window.location.href = '/';
     }
   },
 

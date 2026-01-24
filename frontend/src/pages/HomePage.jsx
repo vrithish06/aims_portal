@@ -80,9 +80,9 @@ function HomePage() {
     }
   }, [isAuthenticated]);
 
-  const handleLogout = () => {
-    logout();
-    toast.success('Logged out successfully');
+  const handleLogout = async () => {
+    await logout();
+    // Toast and navigation handled in logout function
   };
 
   const handleHelp = async () => {

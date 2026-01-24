@@ -1359,53 +1359,129 @@ export const updateOfferingStatus = async (req, res) => {
 };
 
 
-// Update specific enrollment status (for teacher/admin to approve pending students)
 export const updateEnrollmentStatus = async (req, res) => {
   const { offeringId, enrollmentId } = req.params;
   const { enrol_status } = req.body;
   const userId = req.user?.user_id;
 
   try {
-    // Get the enrollment to verify it exists
+    // 1. Get the enrollment and student details
     const { data: enrollment, error: enrollmentError } = await supabase
       .from("course_enrollment")
-      .select("*")
+      .select(`
+        *,
+        student:student_id (student_id, degree, batch, branch, advisor_id)
+      `)
       .eq('enrollment_id', enrollmentId)
       .eq('offering_id', offeringId)
       .single();
 
     if (enrollmentError || !enrollment) {
-      return res.status(404).json({
-        success: false,
-        message: "Enrollment not found"
-      });
+      return res.status(404).json({ success: false, message: "Enrollment not found" });
     }
 
-    // For instructors: verify offering belongs to them
-    if (userId) {
-      const { data: instructor, error: instructorError } = await supabase
-        .from("instructor")
-        .select("instructor_id")
-        .eq('user_id', userId)
-        .single();
+    // 2. Authorization Check
+    let isAuthorized = false;
 
-      if (!instructorError && instructor) {
-        const { data: offering } = await supabase
-          .from("course_offering")
-          .select("instructor_id")
-          .eq('offering_id', offeringId)
-          .single();
+    // Get instructor context
+    const { data: instructor, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id, branch")
+      .eq('user_id', userId)
+      .single();
 
-        if (offering && offering.instructor_id !== instructor.instructor_id) {
-          return res.status(403).json({
-            success: false,
-            message: "You can only update enrollments for your offerings"
-          });
+    if (instructorError || !instructor) {
+      console.log("[UPDATE-ENROLLMENT] Instructor not found for user_id:", userId, instructorError);
+      return res.status(403).json({ success: false, message: "Instructor record not found" });
+    }
+
+    console.log("[UPDATE-ENROLLMENT] Authorization check:", {
+      enrollmentId,
+      offeringId,
+      currentStatus: enrollment.enrol_status,
+      instructorId: instructor.instructor_id,
+      studentId: enrollment.student_id
+    });
+
+    // Check if they are the Instructor for this offering
+    const { data: isTeacher } = await supabase
+      .from("course_offering_instructor")
+      .select("id")
+      .eq('offering_id', offeringId)
+      .eq('instructor_id', instructor.instructor_id)
+      .maybeSingle();
+
+    if (isTeacher && enrollment.enrol_status === 'pending instructor approval') {
+      console.log("[UPDATE-ENROLLMENT] ✅ Authorized as Instructor");
+      isAuthorized = true;
+    }
+
+    // Check if they are the Advisor for this student
+    if (enrollment.enrol_status === 'pending advisor approval') {
+      // Get the advisor record to get advisor_id
+      const { data: advisorRecord } = await supabase
+        .from("faculty_advisor")
+        .select("advisor_id, for_degree, batch")
+        .eq('instructor_id', instructor.instructor_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+
+      console.log("[UPDATE-ENROLLMENT] Advisor record:", advisorRecord);
+      console.log("[UPDATE-ENROLLMENT] Student data:", enrollment.student);
+
+      if (advisorRecord && enrollment.student) {
+        // Check if student's advisor_id matches the instructor's advisor_id
+        // AND verify degree/batch/branch match
+        // Convert to strings/numbers for comparison to handle type mismatches
+        const studentAdvisorId = enrollment.student.advisor_id ? parseInt(enrollment.student.advisor_id) : null;
+        const advisorRecordId = advisorRecord.advisor_id ? parseInt(advisorRecord.advisor_id) : null;
+        
+        const advisorMatch = studentAdvisorId === advisorRecordId && studentAdvisorId !== null;
+        const degreeMatch = enrollment.student.degree === advisorRecord.for_degree;
+        const batchMatch = String(enrollment.student.batch) === String(advisorRecord.batch);
+        const branchMatch = enrollment.student.branch === instructor.branch;
+
+        console.log("[UPDATE-ENROLLMENT] Advisor checks:", {
+          advisorMatch,
+          degreeMatch,
+          batchMatch,
+          branchMatch,
+          studentAdvisorId,
+          advisorRecordId,
+          studentDegree: enrollment.student.degree,
+          advisorDegree: advisorRecord.for_degree,
+          studentBatch: enrollment.student.batch,
+          advisorBatch: advisorRecord.batch,
+          studentBranch: enrollment.student.branch,
+          instructorBranch: instructor.branch
+        });
+
+        if (advisorMatch && degreeMatch && batchMatch && branchMatch) {
+          console.log("[UPDATE-ENROLLMENT] ✅ Authorized as Advisor");
+          isAuthorized = true;
+        } else {
+          console.log("[UPDATE-ENROLLMENT] ❌ Advisor authorization failed - conditions not met");
         }
+      } else {
+        console.log("[UPDATE-ENROLLMENT] ❌ Advisor authorization failed - missing advisor record or student data");
       }
     }
 
-    // Update enrollment status (convert underscores to spaces for database compatibility)
+    // Admin bypass
+    if (req.user.role === 'admin') {
+      console.log("[UPDATE-ENROLLMENT] ✅ Authorized as Admin");
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      console.log("[UPDATE-ENROLLMENT] ❌ Not authorized");
+      return res.status(403).json({ 
+        success: false, 
+        message: "You are not authorized to approve this request at its current stage." 
+      });
+    }
+
+    // 3. Update status (Convert underscores to spaces: e.g., 'advisor_rejected' -> 'advisor rejected')
     const dbEnrolStatus = enrol_status.replace(/_/g, ' ');
     const { data, error } = await supabase
       .from("course_enrollment")
@@ -1423,13 +1499,9 @@ export const updateEnrollmentStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("updateEnrollmentStatus error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
-
 // Withdraw from course
 export const withdrawCourse = async (req, res) => {
   const { offeringId } = req.params;
@@ -1574,270 +1646,175 @@ export const cancelCourseOffering = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
-// Get pending enrollments for advisor (pending advisor approval for their batch/degree)
+// Get pending enrollments for advisor (pending advisor approval) for their batch/degree/branch
+// Get pending enrollments for advisor (filtered by degree, batch, AND branch)
 export const getPendingAdvisorEnrollments = async (req, res) => {
   const userId = req.user?.user_id;
 
   try {
-    // First, get the instructor (advisor) record for this user
-    const { data: instructorData, error: instructorError } = await supabase
+    // 1. Get the instructor's ID and branch
+    const { data: instructor, error: instError } = await supabase
       .from("instructor")
-      .select("instructor_id")
+      .select("instructor_id, branch")
       .eq('user_id', userId)
       .single();
 
-    if (instructorError || !instructorData) {
-      console.log("Advisor check - No instructor found for user_id:", userId);
-      return res.status(404).json({
-        success: false,
-        message: "Instructor record not found"
-      });
+    if (instError || !instructor) {
+      return res.status(404).json({ success: false, message: "Instructor record not found" });
     }
 
-    // Get faculty advisor record to find the batch and degree this advisor manages
-    const { data: advisorData, error: advisorError } = await supabase
+    // 2. Get the advisor's assigned degree and batch
+    const { data: advisor, error: advError } = await supabase
       .from("faculty_advisor")
       .select("for_degree, batch")
-      .eq('instructor_id', instructorData.instructor_id)
+      .eq('instructor_id', instructor.instructor_id)
+      .eq('is_deleted', false)
       .single();
 
-    if (advisorError || !advisorData) {
-      console.log("Advisor check - No faculty advisor record found for instructor_id:", instructorData.instructor_id);
-      return res.status(404).json({
-        success: false,
-        message: "Faculty advisor record not found. You are not assigned as an advisor."
-      });
+    if (advError || !advisor) {
+      return res.status(404).json({ success: false, message: "No active faculty advisor assignment found" });
     }
 
-    const { for_degree, batch } = advisorData;
-    console.log("Advisor info - degree:", for_degree, "batch:", batch);
-
-    // Get all course offerings for the degree this advisor manages
-    const { data: offerings, error: offeringsError } = await supabase
-      .from("course_offering")
-      .select("offering_id")
-      .eq('degree', for_degree)
-      .eq('acad_session', batch); // batch is the academic session
-
-    if (offeringsError) throw offeringsError;
-
-    const offeringIds = offerings.map(o => o.offering_id);
-    console.log("Found offerings for advisor batch/degree:", offeringIds);
-
-    if (offeringIds.length === 0) {
-      return res.status(200).json({
-        success: true,
-        data: []
-      });
-    }
-
-    // Get enrollments with pending advisor approval for students in this batch/degree
-    const { data: enrollments, error: enrollmentsError } = await supabase
+    // 3. Fetch enrollments joining student and course details
+    // Filtering by status and is_deleted at the DB level for performance
+    const { data: enrollments, error: enrError } = await supabase
       .from("course_enrollment")
       .select(`
         enrollment_id,
-        student_id,
-        offering_id,
         enrol_type,
         enrol_status,
-        grade,
+        student:student_id (
+          student_id,
+          batch,
+          degree,
+          branch,
+          users:user_id (first_name, last_name, email)
+        ),
         course_offering:offering_id (
           offering_id,
           acad_session,
-          slot,
-          section,
-          status,
-          course:course_id (
-            course_id,
-            code,
-            title,
-            ltp
-          )
-        ),
-        student:student_id (
-          student_id,
-          user_id,
-          branch,
-          degree,
-          users:user_id (
-            first_name,
-            last_name,
-            email
-          )
+          course:course_id (code, title, ltp)
         )
       `)
-      .in('offering_id', offeringIds)
       .eq('enrol_status', 'pending advisor approval')
-      .eq('is_deleted', false);
+      .eq('is_deleted', false)
+      .order('enrollment_id', { ascending: false });
 
-    if (enrollmentsError) throw enrollmentsError;
+    if (enrError) throw enrError;
 
-    console.log("Total enrollments found with pending advisor approval:", enrollments?.length || 0);
-    console.log("Raw enrollments data:", JSON.stringify(enrollments, null, 2));
-
-    // Filter enrollments to only include students in the advisor's batch/degree
-    const filteredEnrollments = (enrollments || []).filter(enrollment => {
-      const student = enrollment.student;
-      return student && student.degree === for_degree;
-    });
-
-    console.log("Filtered enrollments (matching degree):", filteredEnrollments.length);
-
-    // Flatten the response
-    const flattenedEnrollments = filteredEnrollments.map(enrollment => ({
-      ...enrollment,
-      offering: enrollment.course_offering,
-      course: enrollment.course_offering?.course
-    }));
+    // 4. Filter by the Advisor's "Batch + Degree + Branch" criteria
+    const filtered = (enrollments || []).filter(e => 
+      e.student?.batch === advisor.batch && 
+      e.student?.degree === advisor.for_degree && 
+      e.student?.branch === instructor.branch
+    );
 
     return res.status(200).json({
       success: true,
-      data: flattenedEnrollments,
+      data: filtered,
       advisorInfo: {
-        degree: for_degree,
-        batch: batch
+        assigned_degree: advisor.for_degree,
+        assigned_batch: advisor.batch,
+        assigned_branch: instructor.branch
       }
     });
-
   } catch (err) {
-    console.error("getPendingAdvisorEnrollments error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error("[PENDING-ADVISOR] Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
-
 // Advisor approval endpoint - only for advisors to approve/reject pending advisor approval requests
 export const updateAdvisorEnrollmentStatus = async (req, res) => {
   const { enrollmentId } = req.params;
-  const { enrol_status } = req.body;
+  const { enrol_status } = req.body; // Expecting 'enrolled' or 'advisor rejected'
   const userId = req.user?.user_id;
 
   try {
-    // Get the instructor (advisor) record
-    const { data: instructorData, error: instructorError } = await supabase
+    // 1. Get Advisor Context
+    const { data: instructor } = await supabase
       .from("instructor")
-      .select("instructor_id")
+      .select("instructor_id, branch")
       .eq('user_id', userId)
       .single();
 
-    if (instructorError || !instructorData) {
-      return res.status(404).json({
-        success: false,
-        message: "Instructor record not found"
-      });
-    }
-
-    // Get faculty advisor record to verify they're an advisor
-    const { data: advisorData, error: advisorError } = await supabase
+    const { data: advisor } = await supabase
       .from("faculty_advisor")
-      .select("for_degree, batch, advisor_id")
-      .eq('instructor_id', instructorData.instructor_id)
+      .select("for_degree, batch")
+      .eq('instructor_id', instructor?.instructor_id)
       .single();
 
-    if (advisorError || !advisorData) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not assigned as a faculty advisor"
-      });
-    }
-
-    // Get the enrollment with student info
-    const { data: enrollment, error: enrollmentError } = await supabase
+    // 2. Get Enrollment & Student Details
+    const { data: enrollment, error: enrError } = await supabase
       .from("course_enrollment")
       .select(`
         enrollment_id,
-        student_id,
         enrol_status,
-        student:student_id (
-          degree,
-          branch
-        )
+        student:student_id (degree, batch, branch)
       `)
       .eq('enrollment_id', enrollmentId)
       .single();
 
-    if (enrollmentError || !enrollment) {
-      return res.status(404).json({
-        success: false,
-        message: "Enrollment not found"
-      });
+    if (enrError || !enrollment) return res.status(404).json({ success: false, message: "Enrollment not found" });
+
+    // 3. Security Check: Does the student belong to this advisor?
+    const isAuthorized = 
+      enrollment.student.degree === advisor.for_degree &&
+      enrollment.student.batch === advisor.batch &&
+      enrollment.student.branch === instructor.branch;
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: "Unauthorized: Student is not in your assigned batch/degree/branch" });
     }
 
-    // Verify the student belongs to this advisor's batch/degree
-    if (!enrollment.student || enrollment.student.degree !== advisorData.for_degree) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only approve enrollments for students in your assigned degree"
-      });
-    }
-
-    // Verify enrollment is in pending advisor approval status
-    if (enrollment.enrol_status !== 'pending advisor approval') {
-      return res.status(400).json({
-        success: false,
-        message: "This enrollment is not pending advisor approval"
-      });
-    }
-
-    // Update enrollment status
-    const dbEnrolStatus = enrol_status.replace(/_/g, ' ');
-    const { data: updatedEnrollment, error: updateError } = await supabase
+    // 4. Update
+    const dbStatus = enrol_status.replace(/_/g, ' ');
+    const { data, error } = await supabase
       .from("course_enrollment")
-      .update({ enrol_status: dbEnrolStatus })
+      .update({ enrol_status: dbStatus })
       .eq('enrollment_id', enrollmentId)
       .select()
       .single();
 
-    if (updateError) throw updateError;
-
-    console.log("Advisor approval - Enrollment", enrollmentId, "updated to:", dbEnrolStatus);
-
-    return res.status(200).json({
-      success: true,
-      message: `Enrollment ${dbEnrolStatus === 'enrolled' ? 'approved' : 'rejected'}`,
-      data: updatedEnrollment
-    });
-
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: `Status updated to ${dbStatus}`, data });
   } catch (err) {
-    console.error("updateAdvisorEnrollmentStatus error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
-
 // Get pending enrollments for instructor (pending instructor approval + pending advisor approval)
 export const getPendingInstructorEnrollments = async (req, res) => {
   const userId = req.user?.user_id;
 
   try {
-    // First, get the instructor record for this user
+    console.log("[PENDING-INSTRUCTOR] Starting fetch for user_id:", userId);
+    
+    // First, get the instructor record for this user - INCLUDE BRANCH
     const { data: instructorData, error: instructorError } = await supabase
       .from("instructor")
-      .select("instructor_id")
+      .select("instructor_id, branch")
       .eq('user_id', userId)
       .single();
 
     if (instructorError || !instructorData) {
+      console.log("[PENDING-INSTRUCTOR] Error: Instructor not found for user_id:", userId);
       return res.status(404).json({
         success: false,
         message: "Instructor record not found"
       });
     }
 
+    console.log("[PENDING-INSTRUCTOR] Instructor found:", instructorData.instructor_id, "branch:", instructorData.branch);
+
     // PART 1: Get enrollments pending instructor approval from courses this instructor teaches
-    const { data: offerings, error: offeringsError } = await supabase
-      .from("course_offering")
+    const { data: offeringInstructors, error: offeringError } = await supabase
+      .from("course_offering_instructor")
       .select("offering_id")
       .eq('instructor_id', instructorData.instructor_id);
 
-    if (offeringsError) throw offeringsError;
+    if (offeringError) throw offeringError;
 
-    const offeringIds = offerings.map(o => o.offering_id);
+    const offeringIds = offeringInstructors.map(o => o.offering_id);
+    console.log("[PENDING-INSTRUCTOR] PART 1 - Courses taught, offering IDs:", offeringIds);
 
     let enrollments = [];
 
@@ -1870,6 +1847,7 @@ export const getPendingInstructorEnrollments = async (req, res) => {
             user_id,
             branch,
             degree,
+            batch,
             users:user_id (
               first_name,
               last_name,
@@ -1882,20 +1860,25 @@ export const getPendingInstructorEnrollments = async (req, res) => {
         .eq('is_deleted', false);
 
       if (approvalError) throw approvalError;
+      console.log("[PENDING-INSTRUCTOR] PART 1 - Found pending instructor approvals:", instructorApprovals?.length || 0);
       enrollments = [...enrollments, ...(instructorApprovals || [])];
     }
 
-    // PART 2: Get enrollments pending advisor approval where this instructor is the advisor for that batch
+    // PART 2: Get enrollments pending advisor approval where this instructor is the advisor for that batch/degree/branch
     const { data: advisorAssignments, error: advisorError } = await supabase
       .from("faculty_advisor")
       .select("for_degree, batch")
       .eq('instructor_id', instructorData.instructor_id);
 
     if (advisorError) throw advisorError;
+    console.log("[PENDING-INSTRUCTOR] PART 2 - Advisor assignments:", advisorAssignments);
+    console.log("[PENDING-INSTRUCTOR] PART 2 - Instructor branch:", instructorData.branch);
 
     // For each degree/batch combination, find students and their pending advisor approvals
     if (advisorAssignments && advisorAssignments.length > 0) {
       for (const assignment of advisorAssignments) {
+        console.log(`[PENDING-INSTRUCTOR] PART 2 - Checking advisor for degree: ${assignment.for_degree}, batch: ${assignment.batch}, branch: ${instructorData.branch}`);
+        
         const { data: advisorPendings, error: pendingError } = await supabase
           .from("course_enrollment")
           .select(`
@@ -1923,6 +1906,7 @@ export const getPendingInstructorEnrollments = async (req, res) => {
               user_id,
               branch,
               degree,
+              batch,
               users:user_id (
                 first_name,
                 last_name,
@@ -1934,20 +1918,33 @@ export const getPendingInstructorEnrollments = async (req, res) => {
           .eq('is_deleted', false);
 
         if (pendingError) throw pendingError;
+        console.log(`[PENDING-INSTRUCTOR] PART 2 - Total pending advisor approvals: ${advisorPendings?.length || 0}`);
 
-        // Filter for students from this batch
-        const advisorPendingsForBatch = (advisorPendings || []).filter(
-          e => e.student?.degree === assignment.for_degree && e.student?.batch === assignment.batch
-        );
+        // Filter for students from this degree AND batch AND branch
+        const advisorPendingsForBatch = (advisorPendings || []).filter(e => {
+          const degreeMatch = e.student?.degree === assignment.for_degree;
+          const batchMatch = e.student?.batch === assignment.batch;
+          const branchMatch = e.student?.branch === instructorData.branch;
+          const matches = degreeMatch && batchMatch && branchMatch;
+          if (e.student) {
+            console.log(`[PENDING-INSTRUCTOR] Checking student ${e.student.users?.email}: degree=${e.student.degree} (expect ${assignment.for_degree}), batch=${e.student.batch} (expect ${assignment.batch}), branch=${e.student.branch} (expect ${instructorData.branch}) => match=${matches}`);
+          }
+          return matches;
+        });
 
+        console.log(`[PENDING-INSTRUCTOR] PART 2 - Filtered for this assignment: ${advisorPendingsForBatch.length}`);
         enrollments = [...enrollments, ...advisorPendingsForBatch];
       }
+    } else {
+      console.log("[PENDING-INSTRUCTOR] PART 2 - No advisor assignments found");
     }
 
     // Remove duplicates based on enrollment_id
     const uniqueEnrollments = Array.from(
       new Map(enrollments.map(e => [e.enrollment_id, e])).values()
     );
+
+    console.log("[PENDING-INSTRUCTOR] Total unique enrollments:", uniqueEnrollments.length);
 
     // Flatten the response
     const flattenedEnrollments = uniqueEnrollments.map(enrollment => ({
@@ -2192,6 +2189,107 @@ export const getCourseOfferingInstructors = async (req, res) => {
   }
 };
 
+// Get all advisees (students under a faculty advisor) - regardless of enrollment status
+export const getAllAdvisees = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    console.log("[GET-ADVISEES] Starting fetch for user_id:", userId);
+    
+    // Step 1: Get the instructor (advisor) record - INCLUDING BRANCH
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id, branch")
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      console.log("[GET-ADVISEES] Error: Instructor not found for user_id:", userId);
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
+    console.log("[GET-ADVISEES] Instructor found:", instructorData.instructor_id, "branch:", instructorData.branch);
+
+    // Step 2: Get faculty advisor assignment
+    const { data: advisorData, error: advisorError } = await supabase
+      .from("faculty_advisor")
+      .select("for_degree, batch")
+      .eq('instructor_id', instructorData.instructor_id)
+      .single();
+
+    if (advisorError || !advisorData) {
+      console.log("[GET-ADVISEES] Error: No faculty advisor record found");
+      return res.status(404).json({
+        success: false,
+        message: "Faculty advisor record not found. You are not assigned as an advisor."
+      });
+    }
+
+    const { for_degree, batch } = advisorData;
+    const advisorBranch = instructorData.branch;
+    console.log("[GET-ADVISEES] Advisor assigned to - degree:", for_degree, "batch:", batch, "branch:", advisorBranch);
+
+    // Step 3: Get all students with this degree AND batch AND branch
+    const { data: students, error: studentError } = await supabase
+      .from("student")
+      .select(`
+        student_id,
+        user_id,
+        branch,
+        degree,
+        batch,
+        cgpa,
+        total_credits_completed,
+        users:user_id (
+          first_name,
+          last_name,
+          email
+        ),
+        enrollments:course_enrollment (
+          enrollment_id,
+          offering_id,
+          enrol_type,
+          enrol_status,
+          course_offering:offering_id (
+            course_id,
+            acad_session,
+            slot,
+            course:course_id (
+              code,
+              title
+            )
+          )
+        )
+      `)
+      .eq('degree', for_degree)
+      .eq('batch', batch)
+      .eq('branch', advisorBranch);
+
+    if (studentError) throw studentError;
+
+    console.log("[GET-ADVISEES] Found students:", students?.length || 0);
+
+    return res.status(200).json({
+      success: true,
+      data: students || [],
+      advisorInfo: {
+        degree: for_degree,
+        batch: batch,
+        branch: advisorBranch
+      }
+    });
+
+  } catch (err) {
+    console.error("[GET-ADVISEES] Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
 
 // --- ALERTS CONTROLLER ---
 
@@ -2263,3 +2361,310 @@ export const deleteAlert = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+// Get pending enrollments for a specific student (for advisor to view/approve)
+export const getStudentPendingEnrollments = async (req, res) => {
+  const userId = req.user?.userid;
+  const { studentId } = req.params;
+
+  try {
+    console.log('STUDENT-PENDING: Fetching for studentId:', studentId, 'by advisor userId:', userId);
+
+    // Step 1: Get the instructor/advisor record
+    const { data: instructorData, error: instructorError } = await supabase
+      .from('instructor')
+      .select('instructor_id, branch')
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({ success: false, message: 'Instructor record not found' });
+    }
+
+    // Step 2: Get faculty advisor record
+    const { data: advisorData, error: advisorError } = await supabase
+      .from('faculty_advisor')
+      .select('for_degree, batch')
+      .eq('instructor_id', instructorData.instructor_id)
+      .eq('is_deleted', false)
+      .single();
+
+    if (advisorError || !advisorData) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Faculty advisor record not found' 
+      });
+    }
+
+    // Step 3: Get the student and verify they belong to this advisor
+    const { data: studentData, error: studentError } = await supabase
+      .from('student')
+      .select(`
+        student_id,
+        user_id,
+        branch,
+        degree,
+        batch,
+        cgpa,
+        total_credits_completed,
+        users!user_id (
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('student_id', studentId)
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    // Verify student belongs to this advisor
+    if (
+      studentData.degree !== advisorData.for_degree ||
+      studentData.batch !== advisorData.batch ||
+      studentData.branch !== instructorData.branch
+    ) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'This student is not under your advisory' 
+      });
+    }
+
+    // Step 4: Get all enrollments for this student (all statuses to show full picture)
+    const { data: enrollments, error: enrollmentsError } = await supabase
+      .from('course_enrollment')
+      .select(`
+        enrollment_id,
+        student_id,
+        offering_id,
+        enrol_type,
+        enrol_status,
+        grade,
+        course_offering!offering_id (
+          offering_id,
+          acad_session,
+          slot,
+          section,
+          status,
+          course!course_id (
+            course_id,
+            code,
+            title,
+            ltp
+          )
+        )
+      `)
+      .eq('student_id', studentId)
+      .eq('is_deleted', false)
+      .order('enrollment_id', { ascending: false });
+
+    if (enrollmentsError) {
+      throw enrollmentsError;
+    }
+
+    console.log('STUDENT-PENDING: Found enrollments:', enrollments?.length || 0);
+
+    // Flatten the response
+    const flattenedEnrollments = enrollments.map(enrollment => ({
+      ...enrollment,
+      offering: enrollment.course_offering,
+      course: enrollment.course_offering?.course
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        student: studentData,
+        enrollments: flattenedEnrollments
+      }
+    });
+
+  } catch (err) {
+    console.error('STUDENT-PENDING: Error', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get My Pending Works - Separated by Instructor and Advisor roles
+export const getMyPendingWorks = async (req, res) => {
+  const userId = req.user?.user_id;
+
+  try {
+    console.log("[MY-PENDING-WORKS] Starting fetch for user_id:", userId);
+
+    // 1. Get instructor record
+    const { data: instructorData, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id, branch")
+      .eq('user_id', userId)
+      .single();
+
+    if (instructorError || !instructorData) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor record not found"
+      });
+    }
+
+    console.log("[MY-PENDING-WORKS] Instructor found:", instructorData.instructor_id);
+
+    // 2. Check if instructor is also a faculty advisor
+    const { data: advisorData, error: advisorError } = await supabase
+      .from("faculty_advisor")
+      .select("advisor_id, for_degree, batch")
+      .eq('instructor_id', instructorData.instructor_id)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    const isAdvisor = !advisorError && advisorData !== null;
+    console.log("[MY-PENDING-WORKS] Is advisor:", isAdvisor);
+
+    // 3. Get pending as Instructor: enrollments with status "pending instructor approval" 
+    //    for courses this instructor teaches
+    const { data: offeringInstructors, error: offeringError } = await supabase
+      .from("course_offering_instructor")
+      .select("offering_id")
+      .eq('instructor_id', instructorData.instructor_id);
+
+    if (offeringError) throw offeringError;
+
+    const offeringIds = offeringInstructors.map(o => o.offering_id);
+    console.log("[MY-PENDING-WORKS] Courses taught, offering IDs:", offeringIds);
+
+    let pendingAsInstructor = [];
+
+    if (offeringIds.length > 0) {
+      const { data: instructorApprovals, error: approvalError } = await supabase
+        .from("course_enrollment")
+        .select(`
+          enrollment_id,
+          student_id,
+          offering_id,
+          enrol_type,
+          enrol_status,
+          grade,
+          course_offering:offering_id (
+            offering_id,
+            acad_session,
+            slot,
+            section,
+            status,
+            course:course_id (
+              course_id,
+              code,
+              title,
+              ltp
+            )
+          ),
+          student:student_id (
+            student_id,
+            user_id,
+            branch,
+            degree,
+            batch,
+            advisor_id,
+            users:user_id (
+              first_name,
+              last_name,
+              email
+            )
+          )
+        `)
+        .in('offering_id', offeringIds)
+        .eq('enrol_status', 'pending instructor approval')
+        .eq('is_deleted', false);
+
+      if (approvalError) throw approvalError;
+      pendingAsInstructor = instructorApprovals || [];
+      console.log("[MY-PENDING-WORKS] Pending as Instructor:", pendingAsInstructor.length);
+    }
+
+    // 4. Get pending as Advisor: enrollments with status "pending advisor approval"
+    //    where the student's advisor_id matches this instructor's faculty_advisor.advisor_id
+    let pendingAsAdvisor = [];
+
+    if (isAdvisor && advisorData) {
+      // Get all students with this advisor_id
+      const { data: adviseeStudents, error: studentError } = await supabase
+        .from("student")
+        .select("student_id")
+        .eq('advisor_id', advisorData.advisor_id);
+
+      if (studentError) throw studentError;
+
+      const studentIds = adviseeStudents.map(s => s.student_id);
+      console.log("[MY-PENDING-WORKS] Advisee student IDs:", studentIds);
+
+      if (studentIds.length > 0) {
+        const { data: advisorApprovals, error: advisorApprovalError } = await supabase
+          .from("course_enrollment")
+          .select(`
+            enrollment_id,
+            student_id,
+            offering_id,
+            enrol_type,
+            enrol_status,
+            grade,
+            course_offering:offering_id (
+              offering_id,
+              acad_session,
+              slot,
+              section,
+              status,
+              course:course_id (
+                course_id,
+                code,
+                title,
+                ltp
+              )
+            ),
+            student:student_id (
+              student_id,
+              user_id,
+              branch,
+              degree,
+              batch,
+              advisor_id,
+              users:user_id (
+                first_name,
+                last_name,
+                email
+              )
+            )
+          `)
+          .in('student_id', studentIds)
+          .eq('enrol_status', 'pending advisor approval')
+          .eq('is_deleted', false);
+
+        if (advisorApprovalError) throw advisorApprovalError;
+        pendingAsAdvisor = advisorApprovals || [];
+        console.log("[MY-PENDING-WORKS] Pending as Advisor:", pendingAsAdvisor.length);
+      }
+    }
+
+    // Flatten the response
+    const flattenEnrollment = (enrollment) => ({
+      ...enrollment,
+      offering: enrollment.course_offering,
+      course: enrollment.course_offering?.course
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        pendingAsInstructor: pendingAsInstructor.map(flattenEnrollment),
+        pendingAsAdvisor: pendingAsAdvisor.map(flattenEnrollment)
+      },
+      isAdvisor: isAdvisor
+    });
+
+  } catch (err) {
+    console.error("[MY-PENDING-WORKS] Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+

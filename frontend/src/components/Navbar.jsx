@@ -16,9 +16,9 @@ function Navbar() {
     console.log("Navbar updated - Auth:", { isAuthenticated, user: user?.email });
   }, [isAuthenticated, user]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/", { replace: true });
+  const handleLogout = async () => {
+    await logout();
+    // Navigation is handled in logout function via window.location.href
   };
 
   // ✅ Your normal active class
@@ -29,7 +29,7 @@ function Navbar() {
   // ✅ My Work should be active when these routes are active
   const isMyWorkActive =
     location.pathname.startsWith("/my-offerings") ||
-    location.pathname.startsWith("/action-pending");
+    location.pathname.startsWith("/my-pending-works");
 
   const myWorkClass = `text-gray-700 hover:text-black font-medium transition-colors text-sm lg:text-base
     ${isMyWorkActive ? "text-black underline underline-offset-8 decoration-2" : ""}`;
@@ -93,8 +93,8 @@ function Navbar() {
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/action-pending" className={navClass}>
-                        Action Pending
+                      <NavLink to="/my-pending-works" className={navClass}>
+                        My Pending Works
                       </NavLink>
                     </li>
                   </ul>
@@ -210,6 +210,9 @@ function Navbar() {
                         <Link to="/my-offerings">My Offerings</Link>
                       </li>
                       <li>
+                        <Link to="/my-pending-works">My Pending Works</Link>
+                      </li>
+                      <li>
                         <Link to="/action-pending">Action Pending</Link>
                       </li>
                       <li>
@@ -302,6 +305,14 @@ function Navbar() {
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
                 My Offerings
+              </Link>
+
+              <Link
+                to="/my-pending-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                My Pending Works
               </Link>
 
               <Link

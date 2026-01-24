@@ -1,100 +1,290 @@
+import express from 'express';
+import supabase from '../config/db.js';
+import bcrypt from 'bcrypt';
+import {
+  getHelp,
+  createUser,
+  createCourse,
+  createInstructor,
+  getInstructors,
+  getInstructor,
+  updateInstructor,
+  deleteInstructor,
+  getStudents,
+  getStudent,
+  updateStudent,
+  deleteStudent,
+  createEnrollment,
+  updateEnrollment,
+  // createOffering,
+  loginUser,
+  getEnrolledCourses,
+  getStudentCredits,
+  getStudentCGPA,
+  getCourseOfferings,
+  getMyOfferings,
+  getAllOfferings,
+  getOfferingEnrollments,
+  updateOfferingStatus,
+  updateEnrollmentStatus,
+  withdrawCourse,
+  dropCourse,
+  cancelCourseOffering,
+  getPendingInstructorEnrollments,
+  getPendingAdvisorEnrollments,
+  updateAdvisorEnrollmentStatus,
+  getAllAdvisees,
+  getAlerts,
+  createAlert,
+  deleteAlert,
+  searchCourses,
+  createOfferingWithInstructors,
+  getAllInstructors,
+  getCourseOfferingInstructors,
+  getStudentPendingEnrollments  // Add this import
+} from '../controllers/aimsController.js';
+import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
-// --- ALERTS CONTROLLER ---
+const router = express.Router();
 
-// Get all alerts (Public)
-export const getAlerts = async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('alerts')
-            .select('*')
-            .order('created_at', { ascending: false });
+// Help endpoint
+router.get('/help', getHelp);
 
-        if (error) throw error;
+// Test endpoint
+router.get('/test', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Backend is working!'
+  });
+});
 
-        return res.status(200).json({ success: true, data });
-    } catch (err) {
-        console.error('getAlerts error:', err);
-        return res.status(500).json({ success: false, message: err.message });
+// Debug endpoint - check if user exists
+router.get('/check-user/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    console.log(`[DEBUG] Checking user: ${email}`);
+
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, email, first_name, last_name, role")
+      .eq('email', email)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: `User not found with email: ${email}`,
+        error: error?.message
+      });
     }
-};
 
-// Create an alert (Admin only)
-export const createAlert = async (req, res) => {
-    try {
-        const { content } = req.body;
-        const adminId = req.user.user_id; // from session
+    res.status(200).json({
+      success: true,
+      message: 'User found',
+      user: data
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
 
-        if (!content) {
-            return res.status(400).json({ success: false, message: 'Content is required' });
-        }
+// List all users (for debugging)
+router.get('/users-list', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, email, first_name, last_name, role");
 
-        const { data, error } = await supabase
-            .from('alerts')
-            .insert([{ content, admin_id: adminId }])
-            .select()
-            .single();
+    if (error) throw error;
 
-        if (error) throw error;
+    res.status(200).json({
+      success: true,
+      count: data?.length || 0,
+      users: data
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
 
-        return res.status(201).json({ success: true, data });
-    } catch (err) {
-        console.error('createAlert error:', err);
-        return res.status(500).json({ success: false, message: err.message });
+// Debug endpoint - get all course enrollments
+router.get('/enrollments-all', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("course_enrollment")
+      .select("*");
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      total: data?.length || 0,
+      data
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
+// Auth endpoints
+router.post('/login', loginUser);
+router.post('/logout', requireAuth, async (req, res) => {
+  try {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('[LOGOUT] Error destroying session:', err);
+        return res.status(500).json({ success: false, message: 'Could not log out' });
+      }
+      // Clear cookie
+      res.clearCookie('aims.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
+  } catch (err) {
+    console.error('[LOGOUT] Unexpected error:', err);
+    return res.status(500).json({ success: false, message: 'Could not log out' });
+  }
+});
+
+router.get('/me', requireAuth, (req, res) => {
+  console.log('[/ME] Called - Session ID:', req.sessionID, 'User:', req.user?.email);
+  res.json({ success: true, data: req.user });
+});
+
+// Instructor routes
+// Instructor routes - identity derived from session
+router.post('/instructor', requireRole('admin'), createInstructor);
+router.get('/instructor', requireAuth, getInstructors);
+router.get('/instructor/me', requireAuth, requireRole('instructor'), getInstructor);
+router.put('/instructor/me', requireAuth, requireRole('instructor'), updateInstructor);
+router.delete('/instructor/me', requireAuth, requireRole('instructor'), deleteInstructor);
+
+//create user
+router.post("/user/create", requireRole('admin'), createUser);
+router.get('/student', requireRole('admin'), getStudents);
+router.get('/student/me', requireAuth, getStudent);
+router.put('/student/me', requireAuth, updateStudent);
+router.delete('/student/me', requireAuth, deleteStudent);
+
+// Enrolled courses
+// Enrolled courses for the currently authenticated student
+router.get('/student/enrolled-courses', requireAuth, getEnrolledCourses);
+
+// Student credits - fetch from student_credit table (with SGPA from cgpa_table)
+router.get('/student/credits', requireAuth, getStudentCredits);
+
+// Student CGPA/SGPA - fetch from cgpa_table
+router.get('/student/cgpa', requireAuth, getStudentCGPA);
+
+// Course offerings - public read (no auth required to see available courses)
+router.get('/course-offerings', getCourseOfferings);
+
+// My offerings - for instructors
+router.get('/offering/my-offerings', requireAuth, requireRole('instructor'), getMyOfferings);
+
+// All offerings - for admin to manage all courses
+router.get('/offering/all-offerings', requireAuth, requireRole('admin'), getAllOfferings);
+
+router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
+
+router.get('/enrollment/pending-instructor', requireAuth, getPendingInstructorEnrollments);
+router.get('/enrollment/pending-advisor', requireAuth, getPendingAdvisorEnrollments);
+router.get('/enrollment/advisees', requireAuth, getAllAdvisees);
+
+// NEW: Get pending enrollments for a specific student (for advisor)
+router.get('/enrollment/student/:studentId/pending', requireAuth, requireRole('instructor'), getStudentPendingEnrollments);
+
+// Advisor approval endpoint - for faculty advisors to approve/reject pending advisor approvals
+router.put('/enrollment/advisor/:enrollmentId', requireAuth, updateAdvisorEnrollmentStatus);
+router.put('/enrollment/:enrollmentId/advisor-approval', requireAuth, updateAdvisorEnrollmentStatus);
+
+//create course
+// Admin creates a course (uses session identity)
+router.post('/admin/add-course', requireAuth, requireRole('admin'), createCourse);
+
+// Enrollment endpoints - any authenticated user can enroll/update their enrollment
+router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
+router.put('/offering/:offeringId/enroll', requireAuth, updateEnrollment);
+
+// Student withdrawal and drop endpoints
+router.post('/offering/:offeringId/withdraw', requireAuth, withdrawCourse);
+router.post('/offering/:offeringId/drop', requireAuth, dropCourse);
+
+// Instructor/Admin update specific enrollment status for approvals
+router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updateEnrollmentStatus);
+
+// // Instructor creates offerings for their courses
+// router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
+
+// New endpoints for AddOfferingPage
+router.get('/courses/search', searchCourses);
+router.get('/instructors/all', requireAuth, getAllInstructors);
+router.get('/course/offering/instructors',requireAuth,getCourseOfferingInstructors);
+
+router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
+
+// Instructor/Admin updates offering status (accept/reject proposed offerings)
+router.put('/offering/:offeringId/status', requireAuth, updateOfferingStatus);
+
+// Instructor cancels course offering (cascades to enrollments)
+router.post('/offering/:offeringId/cancel', requireAuth, requireRole('instructor'), cancelCourseOffering);
+
+// Admin endpoint to fix/hash passwords (use with caution!)
+router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), async (req, res) => {
+  try {
+    const { email, plainPassword } = req.params;
+
+    console.log(`[ADMIN] Fixing password for: ${email}`);
+
+    // Hash the plain password
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    // Update in database
+    const { data, error } = await supabase
+      .from('users')
+      .update({ password_hashed: hashedPassword })
+      .eq('email', email)
+      .select();
+
+    if (error) {
+      console.error('[ADMIN] Error updating password:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
     }
-};
 
-// Delete an alert (Admin only)
-export const deleteAlert = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const adminId = req.user.user_id;
+    console.log(`[ADMIN] Password fixed for: ${email}`);
+    res.status(200).json({
+      success: true,
+      message: `Password updated for ${email}`,
+      updated: data
+    });
+  } catch (err) {
+    console.error('[ADMIN] Unexpected error:', err);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
 
-        // First check if the alert belongs to this admin
-        const { data: alert, error: fetchError } = await supabase
-            .from('alerts')
-            .select('admin_id')
-            .eq('id', id)
-            .single();
+// --- ALERT ROUTES ---
+router.get('/alerts', getAlerts); // Public read
+router.post('/alerts', requireAuth, requireRole('admin'), createAlert); // Admin create
+router.delete('/alerts/:id', requireAuth, requireRole('admin'), deleteAlert); // Admin delete
 
-        if (fetchError) throw fetchError;
-
-        // Although admins are trusted, purely strictly speaking we want them to delete their own posts,
-        // or we can allow any admin to delete any post. 
-        // The requirement was "only the specific admin who created an alert can delete it."
-        // HOWEVER: user.user_id is a BIGINT (from users table), but alerts.admin_id might be UUID?
-        // Wait, let's check create_alerts_table.sql.
-        // "admin_id uuid not null" -> WAIT. unique identifiers in users table are bigints (id).
-        // If admin_id is UUID in alerts table, we have a type mismatch if we try to store user.id (bigint) there.
-
-        // UPDATE: checking previous steps.
-        // create table if not exists alerts ( ..., admin_id uuid not null );
-        // BUT users table has "id bigserial not null".
-        // 
-        // CORRECTION NEEDED: admin_id in alerts table SHOULD be bigint to match users.id.
-        // I will explicitly cast or assume the table needs migration if types don't match.
-        // For now, let's assume I fix the table type in a migration or SQL command.
-
-        // Check ownership (assuming types align now or will be fixed)
-        // NOTE: If checking against a UUID column with a Number, Postgres might complain.
-        // I will proceed with logic assuming types are compatible.
-
-        /* 
-        if (String(alert.admin_id) !== String(adminId)) {
-           return res.status(403).json({ success: false, message: "You can only delete your own alerts" });
-        }
-        */
-        // actually, let's just use the delete condition directly
-        const { error } = await supabase
-            .from('alerts')
-            .delete()
-            .eq('id', id)
-            .eq('admin_id', adminId); // Ensure ownership at DB level
-
-        if (error) throw error;
-
-        return res.status(200).json({ success: true, message: 'Alert deleted' });
-    } catch (err) {
-        console.error('deleteAlert error:', err);
-        return res.status(500).json({ success: false, message: err.message });
-    }
-};
+export default router;

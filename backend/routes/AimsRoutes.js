@@ -33,6 +33,8 @@ import {
   getPendingInstructorEnrollments,
   getPendingAdvisorEnrollments,
   updateAdvisorEnrollmentStatus,
+  getAllAdvisees,
+  getMyPendingWorks,
   getAlerts,
   createAlert,
   deleteAlert,
@@ -200,6 +202,8 @@ router.get('/offering/:offeringId/enrollments', getOfferingEnrollments);
 
 router.get('/enrollment/pending-instructor', requireAuth, getPendingInstructorEnrollments);
 router.get('/enrollment/pending-advisor', requireAuth, getPendingAdvisorEnrollments);
+router.get('/enrollment/advisees', requireAuth, getAllAdvisees);
+router.get('/enrollment/my-pending-works', requireAuth, requireRole('instructor'), getMyPendingWorks);
 
 // Advisor approval endpoint - for faculty advisors to approve/reject pending advisor approvals
 router.put('/enrollment/:enrollmentId/advisor-approval', requireAuth, updateAdvisorEnrollmentStatus);
