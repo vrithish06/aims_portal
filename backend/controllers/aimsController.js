@@ -169,6 +169,34 @@ export const createCourse = async (req, res) => {
   }
 };
 
+// display all courses
+export const getAllCourses = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("course")
+      .select("*")
+      .eq("is_deleted", false)
+      .order("course_id", { ascending: true });
+
+    if (error) throw error;
+
+    console.log("[getAllCourses] ✅ Fetched", data?.length || 0, "courses");
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+
+  } catch (err) {
+    console.error("[getAllCourses] ❌ Error:", err.message);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
 // Search courses by code
 export const searchCourses = async (req, res) => {
   try {
@@ -270,6 +298,8 @@ export const getAllInstructors = async (req, res) => {
       .select(`
         instructor_id,
         user_id,
+        branch,
+        is_advisor,
         users:user_id (
           id,
           email,
@@ -277,7 +307,8 @@ export const getAllInstructors = async (req, res) => {
           last_name
         )
       `)
-      .eq("is_deleted", false);
+      .eq("is_deleted", false)
+      .order("branch", { ascending: true });
 
     if (error) throw error;
 
@@ -286,7 +317,154 @@ export const getAllInstructors = async (req, res) => {
       data: data || []
     });
   } catch (err) {
-    console.error("getAllInstructors error:", err);
+    console.error("[getAllInstructors] ❌ Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get all advisors with their assigned degree and batch
+export const getAllAdvisors = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("faculty_advisor")
+      .select(`
+        advisor_id,
+        instructor_id,
+        for_degree,
+        batch,
+        is_deleted,
+        instructor:instructor_id (
+          instructor_id,
+          user_id,
+          branch,
+          users:user_id (
+            id,
+            email,
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .eq("is_deleted", false)
+      .order("for_degree", { ascending: true });
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
+  } catch (err) {
+    console.error("[getAllAdvisors] ❌ Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Create a new faculty advisor
+export const createAdvisor = async (req, res) => {
+  const { instructor_id, for_degree, batch } = req.body;
+
+  // Validation
+  if (!instructor_id || !for_degree || !batch) {
+    return res.status(400).json({
+      success: false,
+      message: "instructor_id, for_degree, and batch are required"
+    });
+  }
+
+  try {
+    // First, check if instructor exists
+    const { data: instructor, error: instructorError } = await supabase
+      .from("instructor")
+      .select("instructor_id, user_id")
+      .eq("instructor_id", instructor_id)
+      .eq("is_deleted", false)
+      .single();
+
+    if (instructorError || !instructor) {
+      return res.status(404).json({
+        success: false,
+        message: "Instructor not found"
+      });
+    }
+
+    // Check if this instructor is already an advisor for this degree/batch
+    const { data: existingAdvisor } = await supabase
+      .from("faculty_advisor")
+      .select("advisor_id")
+      .eq("instructor_id", instructor_id)
+      .eq("for_degree", for_degree)
+      .eq("batch", batch)
+      .eq("is_deleted", false)
+      .single();
+
+    if (existingAdvisor) {
+      return res.status(400).json({
+        success: false,
+        message: "This instructor is already an advisor for this degree and batch"
+      });
+    }
+
+    // Create faculty advisor record
+    const { data: advisor, error: advisorError } = await supabase
+      .from("faculty_advisor")
+      .insert({
+        instructor_id,
+        for_degree,
+        batch,
+        is_deleted: false
+      })
+      .select()
+      .single();
+
+    if (advisorError) throw advisorError;
+
+    console.log("[createAdvisor] ✅ Advisor created:", advisor.advisor_id);
+
+    return res.status(201).json({
+      success: true,
+      message: "Faculty advisor created successfully",
+      data: advisor
+    });
+
+  } catch (err) {
+    console.error("[createAdvisor] ❌ Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Delete a faculty advisor (soft delete)
+export const deleteAdvisor = async (req, res) => {
+  const { advisorId } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("faculty_advisor")
+      .update({ is_deleted: true })
+      .eq("advisor_id", advisorId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log("[deleteAdvisor] ✅ Advisor deleted:", advisorId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Faculty advisor removed successfully"
+    });
+
+  } catch (err) {
+    console.error("[deleteAdvisor] ❌ Error:", err.message);
     return res.status(500).json({
       success: false,
       message: err.message
@@ -1396,7 +1574,6 @@ export const updateOfferingStatus = async (req, res) => {
     });
   }
 };
-
 
 export const updateEnrollmentStatus = async (req, res) => {
   const { offeringId, enrollmentId } = req.params;

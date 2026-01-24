@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
 import CourseOfferingsPage from "./pages/CourseOfferingsPage";
+import CoursesPage from "./pages/CoursesPage";
 import CourseDetailsPage from "./pages/CourseDetailsPage";
 import StudentRecordPage from "./pages/StudentRecordPage";
 import CourseAddPage from "./pages/CourseAddPage";
@@ -12,6 +13,8 @@ import AddOfferingPage from "./pages/AddOfferingPage"
 import MyOfferingsPage from "./pages/MyOfferingsPage";
 import AddUserPage from "./pages/AddUserPage";
 import ActionPendingPage from "./pages/ActionPendingPage";
+import AddAdvisorPage from "./pages/AddAdvisorPage";
+import AllAdvisorsPage from "./pages/AllAdvisorsPage";
 import AdvisorActionsPage from "./pages/AdvisorActionsPage";
 import FacultyAdviseesPage from "./pages/FacultyAdviseesPage";
 import AdminAlertsPage from "./pages/AdminAlertsPage";
@@ -47,6 +50,7 @@ function App() {
         <Route path="/enrolled-courses" element={<ProtectedRoute><EnrolledCoursesPage /></ProtectedRoute>} />
         <Route path="/course-offerings" element={<ProtectedRoute><CourseOfferingsPage /></ProtectedRoute>} />
         <Route path="/student-record" element={<ProtectedRoute><StudentRecordPage /></ProtectedRoute>} />
+        <Route path="/courses/all" element={<ProtectedRoute><CoursesPage/></ProtectedRoute>} />
         <Route path="/course/:offeringId" element={<ProtectedRoute><CourseDetailsPage /></ProtectedRoute>} />
         <Route path="/course-add" element={<ProtectedRoute><CourseAddPage /></ProtectedRoute>} />
         <Route path="/add-offering" element={<ProtectedRoute><AddOfferingPage /></ProtectedRoute>} />
@@ -55,6 +59,8 @@ function App() {
         <Route path="/action-pending/:offeringId" element={<ProtectedRoute><ActionPendingPage /></ProtectedRoute>} />
         <Route path="/advisor-actions" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
         <Route path="/my-pending-works" element={<ProtectedRoute><MyPendingWorksPage /></ProtectedRoute>} />
+        <Route path="/add-advisor" element={<ProtectedRoute><AddAdvisorPage /></ProtectedRoute>} />
+        <Route path="/all-advisors" element={<ProtectedRoute><AllAdvisorsPage /></ProtectedRoute>} />
         <Route path="/advisor-actions/:studentId" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
         <Route path="/faculty-advisees" element={<ProtectedRoute><FacultyAdviseesPage /></ProtectedRoute>} />
         <Route path="/admin-alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
