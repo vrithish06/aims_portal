@@ -24,6 +24,7 @@ import {
   getCourseOfferings,
   getMyOfferings,
   getAllOfferings,
+  getOfferingDetails,
   getOfferingEnrollments,
   updateOfferingStatus,
   updateEnrollmentStatus,

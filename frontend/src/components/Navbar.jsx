@@ -128,6 +128,10 @@ function Navbar() {
                 <NavLink to="/course-add" className={navClass}>
                   Add Course
                 </NavLink>
+
+                <NavLink to="/add-advisor" className={navClass}>
+                  Add Advisor
+                </NavLink>
               </>
             )}
 

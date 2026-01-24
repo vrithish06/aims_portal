@@ -16,7 +16,7 @@ function AddOfferingPage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
 
   const [acad_session, setAcadSession] = useState("");
-  const [status, setStatus] = useState("Enrolling");
+  const [status, setStatus] = useState("Proposed");
   const [slot, setSlot] = useState("");
   const [section, setSection] = useState("");
 

@@ -49,6 +49,7 @@ function App() {
         <Route path="/action-pending" element={<ProtectedRoute><ActionPendingPage /></ProtectedRoute>} />
         <Route path="/action-pending/:offeringId" element={<ProtectedRoute><ActionPendingPage /></ProtectedRoute>} />
         <Route path="/advisor-actions" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
+        
         <Route path="/advisor-actions/:offeringId" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
         <Route path="/admin-alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
         <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
