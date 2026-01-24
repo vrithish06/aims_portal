@@ -114,7 +114,7 @@ function Navbar() {
             {user?.role === "admin" && (
               <>
                 <NavLink to="/course-offerings" className={navClass}>
-                  Course Offerings
+                  Browse Courses
                 </NavLink>
 
                 <NavLink to="/add-user" className={navClass}>
@@ -131,6 +131,10 @@ function Navbar() {
 
                 <NavLink to="/add-advisor" className={navClass}>
                   Add Advisor
+                </NavLink>
+
+                <NavLink to="/all-advisors" className={navClass}>
+                  All Advisors
                 </NavLink>
               </>
             )}
@@ -208,7 +212,7 @@ function Navbar() {
                         <Link to="/enrolled-courses">My Courses</Link>
                       </li>
                       <li>
-                        <Link to="/course-offerings">Available Courses</Link>
+                        <Link to="/course-offerings">Browse Courses</Link>
                       </li>
                       <li>
                         <Link to="/student-record">Student Record</Link>
@@ -225,16 +229,10 @@ function Navbar() {
                         <Link to="/my-pending-works">My Pending Works</Link>
                       </li>
                       <li>
-                        <Link to="/action-pending">Action Pending</Link>
-                      </li>
-                      <li>
-                        <Link to="/advisor-actions">Advisor Actions</Link>
-                      </li>
-                      <li>
                         <Link to="/course-offerings">Browse Courses</Link>
                       </li>
                       <li>
-                        <Link to="/course-add">Add Course</Link>
+                        <Link to="/add-offering">Offer a Course</Link>
                       </li>
                     </>
                   )}
@@ -242,13 +240,22 @@ function Navbar() {
                   {user?.role === "admin" && (
                     <>
                       <li>
-                        <Link to="/course-offerings">Courses</Link>
+                        <Link to="/course-offerings">Browse Courses</Link>
                       </li>
                       <li>
                         <Link to="/add-user">Add User</Link>
                       </li>
                       <li>
                         <Link to="/admin-alerts">Add Alert</Link>
+                      </li>
+                      <li>
+                        <Link to="/course-add">Add Course</Link>
+                      </li>
+                      <li>
+                        <Link to="/add-advisor">Add Advisor</Link>
+                      </li>
+                      <li>
+                        <Link to="/all-advisors">All Advisors</Link>
                       </li>
                     </>
                   )}
@@ -328,22 +335,6 @@ function Navbar() {
               </Link>
 
               <Link
-                to="/action-pending"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
-              >
-                Action Pending
-              </Link>
-
-              <Link
-                to="/advisor-actions"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
-              >
-                Advisor Actions
-              </Link>
-
-              <Link
                 to="/course-offerings"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
@@ -352,11 +343,11 @@ function Navbar() {
               </Link>
 
               <Link
-                to="/course-add"
+                to="/add-offering"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
-                Add Course
+                Offer a Course
               </Link>
             </>
           )}
@@ -368,7 +359,7 @@ function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
-                Courses
+                Browse Courses
               </Link>
 
               <Link
@@ -386,6 +377,30 @@ function Navbar() {
               >
                 Add Alert
               </Link>
+
+              <Link
+                to="/course-add"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                Add Course
+              </Link>
+
+              <Link
+                to="/add-advisor"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                Add Advisor
+              </Link>
+
+              <Link
+                to="/all-advisors"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                All Advisors
+              </Link>
             </>
           )}
 
@@ -396,6 +411,13 @@ function Navbar() {
           >
             Alerts
           </Link>
+
+          <button
+            onClick={handleLogout}
+            className="w-full text-left text-red-600 hover:bg-red-50 font-medium px-4 py-2 rounded transition-colors"
+          >
+            Logout
+          </button>
         </div>
       )}
     </div>

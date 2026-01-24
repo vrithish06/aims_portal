@@ -95,7 +95,7 @@ function CourseAddPage() {
         return;
       }
       // display all courses after creation
-      navigate("/courses", {
+      navigate("/courses/all", {
         state: { message: "Course created successfully!" },
       });
     } catch (err) {

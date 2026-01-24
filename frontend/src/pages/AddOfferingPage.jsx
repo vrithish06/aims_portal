@@ -515,8 +515,8 @@ function AddOfferingPage() {
                             handleToggleCoordinator(instructor.instructor_id)
                           }
                           className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 transition ${instructor.is_coordinator
-                              ? "bg-green-100 text-green-800 hover:bg-green-200"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-green-100 text-green-800 hover:bg-green-200"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         >
                           {instructor.is_coordinator ? (
@@ -567,7 +567,7 @@ function AddOfferingPage() {
                   >
                     <div className="grid grid-cols-3 gap-3">
                       <input
-                        type="number"
+                        type="text"
                         placeholder="Batch (e.g. 2024)"
                         value={target.batch}
                         onChange={(e) =>
@@ -605,8 +605,8 @@ function AddOfferingPage() {
                           type="button"
                           onClick={() => toggleOfferingType(idx, type)}
                           className={`px-3 py-1 rounded-full text-xs font-medium border ${target.offering_type.includes(type)
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white text-gray-700 border-gray-300"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-700 border-gray-300"
                             }`}
                         >
                           {type}

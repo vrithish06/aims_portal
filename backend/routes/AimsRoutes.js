@@ -5,6 +5,7 @@ import {
   getHelp,
   createUser,
   createCourse,
+  getAllCourses,
   createInstructor,
   getInstructors,
   getInstructor,
@@ -31,6 +32,9 @@ import {
   dropCourse,
   cancelCourseOffering,
   getPendingInstructorEnrollments,
+  createAdvisor,
+  getAllAdvisors,
+  deleteAdvisor,
   getPendingAdvisorEnrollments,
   updateAdvisorEnrollmentStatus,
   getAllAdvisees,
@@ -51,46 +55,7 @@ const router = express.Router();
 // Help endpoint
 router.get('/help', getHelp);
 
-// Test endpoint
-router.get('/test', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Backend is working!'
-  });
-});
 
-// Debug endpoint - check if user exists
-router.get('/check-user/:email', async (req, res) => {
-  try {
-    const { email } = req.params;
-    console.log(`[DEBUG] Checking user: ${email}`);
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, email, first_name, last_name, role")
-      .eq('email', email)
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({
-        success: false,
-        message: `User not found with email: ${email}`,
-        error: error?.message
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'User found',
-      user: data
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-});
 
 // List all users (for debugging)
 router.get('/users-list', async (req, res) => {
@@ -212,6 +177,7 @@ router.put('/enrollment/:enrollmentId/advisor-approval', requireAuth, updateAdvi
 //create course
 // Admin creates a course (uses session identity)
 router.post('/admin/add-course', requireAuth, requireRole('admin'), createCourse);
+router.get('/courses/all', requireAuth, getAllCourses);
 
 // Enrollment endpoints - any authenticated user can enroll/update their enrollment
 router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
@@ -224,13 +190,15 @@ router.post('/offering/:offeringId/drop', requireAuth, dropCourse);
 // Instructor/Admin update specific enrollment status for approvals
 router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updateEnrollmentStatus);
 
-// // Instructor creates offerings for their courses
-// router.post('/course/:courseId/offer', requireAuth, requireRole('instructor'), createOffering);
-
 // New endpoints for AddOfferingPage
 router.get('/courses/search', searchCourses);
 router.get('/instructors/all', requireAuth, getAllInstructors);
 router.get('/course/offering/instructors', requireAuth, getCourseOfferingInstructors);
+
+// Advisor management endpoints
+router.post('/admin/add-advisor', requireAuth, requireRole('admin'), createAdvisor);
+router.get('/admin/advisors', requireAuth, requireRole('admin'), getAllAdvisors);
+router.delete('/admin/advisors/:advisorId', requireAuth, requireRole('admin'), deleteAdvisor);
 
 router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 
