@@ -4,8 +4,6 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import session from "express-session";
-import pgSession from "connect-pg-simple";
-import { Pool } from "pg";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -76,41 +74,10 @@ const isProduction = process.env.NODE_ENV === "production";
 
 console.log("[SESSION] Mode:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
 
-let sessionStore = null;
-
-// Production: Use PostgreSQL session store
-// DATABASE_URL should be set to Supabase PostgreSQL connection string in production
-if (isProduction && process.env.DATABASE_URL) {
-  try {
-    // Force IPv4 for the pool connection
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // Required for cloud PostgreSQL
-      family: 4 // Force IPv4 in socket connection
-    });
-
-    // Test the connection
-    pool.query("SELECT 1", (err) => {
-      if (err) {
-        console.error("[SESSION] PostgreSQL connection failed:", err.message);
-      } else {
-        console.log("[SESSION] ✅ PostgreSQL connection successful");
-      }
-    });
-
-    const PgSession = pgSession(session);
-    sessionStore = new PgSession({
-      pool,
-      tableName: "session",
-      createTableIfMissing: true,
-    });
-
-    console.log("[SESSION] Using PostgreSQL session store (production mode)");
-  } catch (err) {
-    console.error("[SESSION] Failed to initialize PostgreSQL store:", err.message);
-    console.log("[SESSION] Falling back to memory store");
-  }
-}
+// ⚠️ BYPASS: Falling back to MemoryStore as requested to fix deployment issues.
+// Providing a null store forces express-session to use MemoryStore.
+// Note: Sessions will be lost on server restart.
+const sessionStore = null;
 
 if (!sessionStore) {
   console.log("[SESSION] Using memory store for session persistence");
