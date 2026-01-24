@@ -569,7 +569,7 @@ function AddOfferingPage() {
                 >
                     <div className="grid grid-cols-3 gap-3">
                     <input
-                        type="number"
+                        type="text"
                         placeholder="Batch (e.g. 2024)"
                         value={target.batch}
                         onChange={(e) =>

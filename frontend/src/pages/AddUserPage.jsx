@@ -25,12 +25,13 @@ function AddUserPage() {
   });
 
   const branches = [
-    'Computer Science',
-    'Information Technology',
-    'Electronics and Communication',
-    'Electrical Engineering',
-    'Mechanical Engineering',
-    'Civil Engineering'
+    { value: "CSE", label: "Computer Science Engineering" },
+    { value: "EE", label: "Electrical Engineering" },
+    { value: "MNC", label: "Mathematics and Computing" },
+    { value: "MECH", label: "Mechanical Engineering" },
+    { value: "CHE", label: "Chemical Engineering" },
+    { value: "CIVIL", label: "Civil Engineering" },
+    { value: "AI", label: "Artificial Intelligence" }
   ];
 
   const roles = [
@@ -269,15 +270,17 @@ function AddUserPage() {
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
+                disabled={formData.role !== "student"}
                 className="select select-bordered w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select a branch</option>
                 {branches.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
+                  <option key={b.value} value={b.value}>
+                    {b.label}
                   </option>
                 ))}
-              </select>
+            </select>
+
             </div>
 
             {/* Password and Confirm Password Row */}
