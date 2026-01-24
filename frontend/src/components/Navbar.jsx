@@ -124,7 +124,7 @@ function Navbar() {
                 <NavLink to="/admin-alerts" className={navClass}>
                   Add Alert
                 </NavLink>
-              
+
                 <NavLink to="/course-add" className={navClass}>
                   Add Course
                 </NavLink>
@@ -152,6 +152,14 @@ function Navbar() {
         <div className="flex-none gap-2 sm:gap-3 pl-2 sm:pl-4">
           {isAuthenticated && user ? (
             <>
+              <button
+                className="hidden md:flex btn btn-ghost btn-circle hover:bg-red-50 text-gray-500 hover:text-red-600"
+                onClick={handleLogout}
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+
               {/* Mobile Menu Toggle */}
               <button
                 className="md:hidden btn btn-ghost btn-circle hover:bg-blue-100"

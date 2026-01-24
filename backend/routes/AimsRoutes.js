@@ -45,7 +45,8 @@ import {
   searchCourses,
   createOfferingWithInstructors,
   getAllInstructors,
-  getCourseOfferingInstructors
+  getCourseOfferingInstructors,
+  bulkApproveEnrollments
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -201,7 +202,10 @@ router.delete('/admin/advisors/:advisorId', requireAuth, requireRole('admin'), d
 
 router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 
-// Instructor/Admin updates offering status (accept/reject proposed offerings)
+// Bulk Actions
+router.post('/enrollment/bulk-approve', requireRole('instructor'), bulkApproveEnrollments);
+
+// Course offering status management (accept/reject proposed offerings)
 router.put('/offering/:offeringId/status', requireAuth, updateOfferingStatus);
 
 // Instructor cancels course offering (cascades to enrollments)

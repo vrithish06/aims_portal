@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
-import { 
-  Zap, 
-  ChevronDown, 
-  Search, 
-  X, 
+import {
+  Zap,
+  ChevronDown,
+  Search,
+  X,
   ListFilter,
   User,
   Calendar,
@@ -115,7 +115,7 @@ function CourseOfferingsPage() {
       const response = await axiosClient.get(
         `/offering/${offeringId}/enrollments`
       );
-      
+
       if (response.data.success) {
         setEnrollmentStats(prev => ({
           ...prev,
@@ -144,8 +144,8 @@ function CourseOfferingsPage() {
 
   const checkSlotClash = (offering) => {
     return enrolledCourses.some(
-      c => c.course_offering?.slot === offering.slot && 
-           c.course_offering?.acad_session === offering.acad_session
+      c => c.course_offering?.slot === offering.slot &&
+        c.course_offering?.acad_session === offering.acad_session
     );
   };
 
@@ -156,7 +156,7 @@ function CourseOfferingsPage() {
     }
 
     const offering = offerings.find(o => o.offering_id === offeringId);
-    
+
     // Check for slot clash
     if (checkSlotClash(offering)) {
       setSlashWarning({ show: true, offering, enrollType });
@@ -181,7 +181,7 @@ function CourseOfferingsPage() {
 
       if (response.data.success) {
         toast.success(`Successfully enrolled as ${enrollType}!`);
-        
+
         // Refresh data
         await fetchEnrollmentStats(offeringId);
         await fetchEnrolledCourses(); // Update enrollment status immediately
@@ -207,7 +207,7 @@ function CourseOfferingsPage() {
 
   const handleOfferingStatusChange = async (offeringId, newStatus) => {
     if (statusUpdating) return;
-    
+
     try {
       setStatusUpdating(offeringId);
       const response = await axiosClient.put(`/offering/${offeringId}/status`, {
@@ -216,9 +216,9 @@ function CourseOfferingsPage() {
 
       if (response.data.success) {
         toast.success(`Offering ${newStatus === 'Accepted' ? 'accepted' : 'rejected'} successfully!`);
-        setOfferings(offerings.map(off => 
-          off.offering_id === offeringId 
-            ? { ...off, status: newStatus === 'Accepted' ? 'Enrolling' : 'Rejected' }
+        setOfferings(offerings.map(off =>
+          off.offering_id === offeringId
+            ? { ...off, status: newStatus === 'Accepted' ? 'Enrolling' : 'Declined' }
             : off
         ));
       } else {
@@ -232,6 +232,17 @@ function CourseOfferingsPage() {
     }
   };
 
+  // Status Color Logic
+  const getStatusStyle = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'open': case 'enrolling': return 'bg-green-100 text-green-700 border-green-200';
+      case 'closed': case 'cancelled': case 'canceled': case 'rejected': case 'declined': return 'bg-red-100 text-red-700 border-red-200';
+      case 'ongoing': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'proposed': return 'bg-purple-100 text-purple-700 border-purple-200';
+      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
+  };
+
   // Filter Logic
   const getUniqueValues = (key) => {
     return [...new Set(offerings.map(o => o[key]).filter(Boolean))].sort();
@@ -239,11 +250,11 @@ function CourseOfferingsPage() {
 
   const filteredOfferings = offerings.filter(offering => {
     const course = offering.course;
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       (course?.code?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (course?.title?.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesFilters = 
+    const matchesFilters =
       (filters.department.length === 0 || filters.department.includes(offering.dept_name)) &&
       (filters.slot.length === 0 || filters.slot.includes(offering.slot)) &&
       (filters.session.length === 0 || filters.session.includes(offering.acad_session)) &&
@@ -308,11 +319,10 @@ function CourseOfferingsPage() {
         <div className="flex gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors flex-shrink-0 ${
-              showFilters 
-                ? 'bg-amber-500 text-white border-amber-500' 
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors flex-shrink-0 ${showFilters
+              ? 'bg-amber-500 text-white border-amber-500'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
           >
             {showFilters ? (
               <>
@@ -399,8 +409,8 @@ function CourseOfferingsPage() {
                 </div>
               </div>
 
-               {/* Slot Filter */}
-               <div className="mb-6">
+              {/* Slot Filter */}
+              <div className="mb-6">
                 <h4 className="font-semibold text-gray-900 mb-3">Slot</h4>
                 <div className="space-y-2">
                   {getUniqueValues('slot').map(slot => (
@@ -456,12 +466,12 @@ function CourseOfferingsPage() {
                 const course = offering.course;
                 const coordinatorName = coordinators[offering.offering_id] || 'TBA';
                 const enrollmentCount = enrollmentStats[offering.offering_id] || 0;
-                
+
                 // Status Color Logic
                 const getStatusStyle = (status) => {
-                  switch(status?.toLowerCase()) {
+                  switch (status?.toLowerCase()) {
                     case 'open': case 'enrolling': return 'bg-green-100 text-green-700 border-green-200';
-                    case 'closed': case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
+                    case 'closed': case 'cancelled': case 'canceled': case 'rejected': case 'declined': return 'bg-red-100 text-red-700 border-red-200';
                     case 'ongoing': return 'bg-amber-100 text-amber-700 border-amber-200';
                     case 'proposed': return 'bg-purple-100 text-purple-700 border-purple-200';
                     default: return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -469,7 +479,7 @@ function CourseOfferingsPage() {
                 };
 
                 return (
-                  <div 
+                  <div
                     key={offering.offering_id}
                     onClick={() => handleCourseClick(offering)}
                     className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col relative"
@@ -486,14 +496,14 @@ function CourseOfferingsPage() {
                           </h3>
                         </div>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold border capitalize whitespace-nowrap ${getStatusStyle(offering.status)}`}>
-                          {offering.status || 'Unknown'}
+                          {(offering.status === 'Canceled' || offering.status === 'Cancelled') ? 'Declined' : (offering.status || 'Unknown')}
                         </span>
                       </div>
                     </div>
 
                     {/* CARD BODY */}
                     <div className="p-5 flex-1 space-y-4">
-                      
+
                       {/* Row 1: Instructor & Dept */}
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -516,8 +526,8 @@ function CourseOfferingsPage() {
                             <span className="text-[10px] text-gray-400 font-bold uppercase">Slot</span>
                             {(() => {
                               const isClashing = enrolledCourses.some(
-                                c => c.course_offering?.slot === offering.slot && 
-                                     c.course_offering?.acad_session === offering.acad_session
+                                c => c.course_offering?.slot === offering.slot &&
+                                  c.course_offering?.acad_session === offering.acad_session
                               );
                               return (
                                 <span className={`text-sm font-bold ${isClashing ? 'text-red-600' : 'text-green-600'}`}>
@@ -551,7 +561,7 @@ function CourseOfferingsPage() {
 
                     {/* CARD FOOTER - Actions */}
                     <div className="p-4 pt-0 mt-auto" onClick={(e) => e.stopPropagation()}>
-                      
+
                       {/* ADMIN: Accept/Reject */}
                       {user?.role === 'admin' && offering.status === 'Proposed' ? (
                         <div className="flex gap-2">
@@ -574,7 +584,7 @@ function CourseOfferingsPage() {
                         /* STUDENT: Enroll Logic */
                         (() => {
                           const enrolled = enrolledCourses.find(e => e.course_offering?.offering_id === offering.offering_id);
-                          
+
                           if (offering.status === 'Cancelled') {
                             return (
                               <div className="w-full py-2.5 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200 text-center">
@@ -582,7 +592,7 @@ function CourseOfferingsPage() {
                               </div>
                             );
                           }
-                          
+
                           if (enrolled) {
                             return (
                               <div className="w-full py-2.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200 text-center flex items-center justify-center gap-2">
@@ -591,7 +601,7 @@ function CourseOfferingsPage() {
                               </div>
                             );
                           }
-                          
+
                           if (offering.status !== 'Enrolling') {
                             return (
                               <button
@@ -602,7 +612,7 @@ function CourseOfferingsPage() {
                               </button>
                             );
                           }
-                          
+
                           return (
                             <div className="relative enroll-dropdown-container">
                               <button
@@ -622,7 +632,7 @@ function CourseOfferingsPage() {
                                   </>
                                 )}
                               </button>
-                              
+
                               {openDropdown === offering.offering_id && (
                                 <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                   {['Credit', 'Credit for Minor', 'Credit for Concentration', 'Credit for Audit'].map((type) => (
