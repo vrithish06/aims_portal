@@ -270,7 +270,7 @@ function AddUserPage() {
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
-                disabled={formData.role !== "student"}
+                disabled={formData.role !== "student" && formData.role !== "instructor"}
                 className="select select-bordered w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select a branch</option>
