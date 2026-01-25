@@ -39,9 +39,10 @@ app.use(express.urlencoded({ extended: true }));
 /* -----------------------------
    CORS (CORRECT)
 ------------------------------ */
+const isProduction = process.env.NODE_ENV === "production";
+
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:3000",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -70,8 +71,6 @@ app.use(morgan("dev"));
 /* -----------------------------
    SESSION (LOCAL + RENDER SAFE)
 ------------------------------ */
-const isProduction = process.env.NODE_ENV === "production";
-
 console.log("[SESSION] Mode:", isProduction ? "PRODUCTION" : "DEVELOPMENT");
 
 // ⚠️ BYPASS: Falling back to MemoryStore as requested to fix deployment issues.

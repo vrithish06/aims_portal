@@ -26,6 +26,8 @@ function CourseOfferingsPage() {
   const [enrollmentStats, setEnrollmentStats] = useState({});
   const [openDropdown, setOpenDropdown] = useState(null);
   const [selectedEnrollType, setSelectedEnrollType] = useState({});
+  const [allowedTypesByOffering, setAllowedTypesByOffering] = useState({});
+  const [allowedTypesLoading, setAllowedTypesLoading] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(null);
@@ -147,6 +149,28 @@ function CourseOfferingsPage() {
       c => c.course_offering?.slot === offering.slot &&
         c.course_offering?.acad_session === offering.acad_session
     );
+  };
+
+  const ensureAllowedTypes = async (offeringId) => {
+    if (allowedTypesByOffering[offeringId]) return;
+    if (allowedTypesLoading === offeringId) return;
+    try {
+      setAllowedTypesLoading(offeringId);
+      const res = await axiosClient.get(`/offering/${offeringId}/allowed-enrol-types`);
+      if (res.data?.success) {
+        setAllowedTypesByOffering(prev => ({
+          ...prev,
+          [offeringId]: res.data.data || []
+        }));
+      } else {
+        setAllowedTypesByOffering(prev => ({ ...prev, [offeringId]: [] }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch allowed enrol types:', err);
+      setAllowedTypesByOffering(prev => ({ ...prev, [offeringId]: [] }));
+    } finally {
+      setAllowedTypesLoading(null);
+    }
   };
 
   const handleEnroll = async (offeringId, enrollType = 'Credit') => {
@@ -616,7 +640,11 @@ function CourseOfferingsPage() {
                           return (
                             <div className="relative enroll-dropdown-container">
                               <button
-                                onClick={() => setOpenDropdown(openDropdown === offering.offering_id ? null : offering.offering_id)}
+                                onClick={async () => {
+                                  const next = openDropdown === offering.offering_id ? null : offering.offering_id;
+                                  setOpenDropdown(next);
+                                  if (next) await ensureAllowedTypes(offering.offering_id);
+                                }}
                                 className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-all shadow-sm shadow-blue-200 active:transform active:scale-95 text-sm"
                                 disabled={enrolling === offering.offering_id}
                               >
@@ -635,15 +663,29 @@ function CourseOfferingsPage() {
 
                               {openDropdown === offering.offering_id && (
                                 <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                  {['Credit', 'Credit for Minor', 'Credit for Concentration', 'Credit for Audit'].map((type) => (
-                                    <button
-                                      key={type}
-                                      onClick={() => handleEnroll(offering.offering_id, type)}
-                                      className="block w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 text-gray-700 text-sm font-medium border-b border-gray-100 last:border-0 transition-colors"
-                                    >
-                                      {type}
-                                    </button>
-                                  ))}
+                                  {allowedTypesLoading === offering.offering_id ? (
+                                    <div className="px-4 py-3 text-sm text-gray-600">
+                                      <span className="loading loading-spinner loading-xs mr-2"></span>
+                                      Loading options...
+                                    </div>
+                                  ) : (
+                                    (allowedTypesByOffering[offering.offering_id] || []).map((type) => (
+                                      <button
+                                        key={type}
+                                        onClick={() => handleEnroll(offering.offering_id, type)}
+                                        className="block w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 text-gray-700 text-sm font-medium border-b border-gray-100 last:border-0 transition-colors"
+                                      >
+                                        {type}
+                                      </button>
+                                    ))
+                                  )}
+
+                                  {allowedTypesLoading !== offering.offering_id &&
+                                    (allowedTypesByOffering[offering.offering_id] || []).length === 0 && (
+                                      <div className="px-4 py-3 text-sm text-gray-600">
+                                        No enrollment types available for you.
+                                      </div>
+                                    )}
                                 </div>
                               )}
                             </div>

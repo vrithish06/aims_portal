@@ -18,6 +18,7 @@ import {
   createEnrollment,
   updateEnrollment,
   // createOffering,
+  getAllowedEnrolTypes,
   loginUser,
   getEnrolledCourses,
   getStudentCredits,
@@ -182,6 +183,7 @@ router.get('/courses/all', requireAuth, getAllCourses);
 // Enrollment endpoints - any authenticated user can enroll/update their enrollment
 router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
 router.put('/offering/:offeringId/enroll', requireAuth, updateEnrollment);
+router.get('/offering/:offeringId/allowed-enrol-types', requireAuth, getAllowedEnrolTypes);
 
 // Student withdrawal and drop endpoints
 router.post('/offering/:offeringId/withdraw', requireAuth, withdrawCourse);

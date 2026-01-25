@@ -619,6 +619,33 @@ export const createEnrollment = async (req, res) => {
       });
     }
 
+    // ✅ Enrolment type validation via DB rule (targets JSONB vs student batch/branch/degree)
+    // Requires Postgres function: public.get_allowed_enrol_types(p_student_id int, p_offering_id int) returns text[]
+    const { data: allowedTypes, error: allowedError } = await supabase.rpc(
+      "get_allowed_enrol_types",
+      {
+        p_student_id: studentData.student_id,
+        p_offering_id: parseInt(offeringId)
+      }
+    );
+
+    if (allowedError) throw allowedError;
+
+    if (!Array.isArray(allowedTypes) || allowedTypes.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Could not compute allowed enrollment types"
+      });
+    }
+
+    if (!allowedTypes.includes(enrol_type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Enrollment type not allowed. Allowed types: ${allowedTypes.join(", ")}`,
+        allowed_enrol_types: allowedTypes
+      });
+    }
+
     const { data, error } = await supabase
       .from("course_enrollment")
       .insert({
@@ -641,6 +668,55 @@ export const createEnrollment = async (req, res) => {
   } catch (err) {
     console.error("createEnrollment error:", err);
 
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get allowed enrollment types for the currently logged-in student and an offering
+export const getAllowedEnrolTypes = async (req, res) => {
+  const offeringId = req.params.offeringId;
+  const userId = req.user?.user_id;
+
+  try {
+    if (req.user?.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Only students can request allowed enrollment types"
+      });
+    }
+
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq("user_id", parseInt(userId))
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    const { data: allowedTypes, error: allowedError } = await supabase.rpc(
+      "get_allowed_enrol_types",
+      {
+        p_student_id: studentData.student_id,
+        p_offering_id: parseInt(offeringId)
+      }
+    );
+
+    if (allowedError) throw allowedError;
+
+    return res.status(200).json({
+      success: true,
+      data: allowedTypes || []
+    });
+  } catch (err) {
+    console.error("[ALLOWED-ENROL-TYPES] Error:", err);
     return res.status(500).json({
       success: false,
       message: err.message
