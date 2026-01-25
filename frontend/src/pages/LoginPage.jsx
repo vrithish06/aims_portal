@@ -3,53 +3,76 @@ import useAuthStore from "../store/authStore";
 import toast from "react-hot-toast";
 
 function LoginPage({ insideModal = false }) {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [step, setStep] = useState("email"); // "email" or "otp"
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const login = useAuthStore((state) => state.login);
+  const sendOTP = useAuthStore((state) => state.sendOTP);
+  const verifyOTP = useAuthStore((state) => state.verifyOTP);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSendOTP = async (e) => {
     e.preventDefault();
 
-    if (!formData.email || !formData.password) {
-      toast.error("Please fill in all fields");
+    if (!email) {
+      toast.error("Please enter your email");
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await sendOTP(email);
 
       if (result?.success) {
-        toast.success("Login successful!");
+        toast.success("OTP sent to your email!");
+        setStep("otp");
       } else {
-        toast.error(result?.message || "Invalid credentials");
+        toast.error(result?.message || "Failed to send OTP");
       }
     } catch (error) {
-      console.error("Login failed:", error);
-
-      // Network / backend unreachable
-      if (!error.response) {
-        toast.error("Backend not reachable. Please try again later.");
-      } else {
-        toast.error("Login failed. Please try again.");
-      }
+      console.error("Send OTP failed:", error);
+      toast.error("Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+
+    if (!otp) {
+      toast.error("Please enter the OTP");
+      return;
+    }
+
+    if (otp.length !== 6) {
+      toast.error("OTP must be 6 digits");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await verifyOTP(email, otp);
+
+      if (result?.success) {
+        toast.success("Login successful!");
+        // Navigation happens automatically via session check in App.jsx
+      } else {
+        toast.error(result?.message || "Invalid OTP");
+      }
+    } catch (error) {
+      console.error("OTP verification failed:", error);
+      toast.error("OTP verification failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackToEmail = () => {
+    setStep("email");
+    setOtp("");
   };
 
   return (
@@ -89,46 +112,79 @@ function LoginPage({ insideModal = false }) {
         {/* RIGHT SIDE */}
         <div className="w-full md:w-1/2 bg-white text-black px-6 py-10 md:p-16 flex flex-col justify-center">
 
+          {step === "email" ? (
+            // STEP 1: EMAIL ENTRY
+            <form onSubmit={handleSendOTP}>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">Enter Your Email</h2>
 
+              <div className="mb-8">
+                <input
+                  type="email"
+                  placeholder="Enter email"
+                  className="w-full bg-transparent border-b border-gray-400 text-black text-base md:text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+              </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <input
-                type="email"
-                name="email"
-                placeholder="Enter email"
-                className="w-full bg-transparent border-b border-gray-400 text-black text-base md:text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500"
-                value={formData.email}
-                onChange={handleChange}
+              <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-full transition-colors disabled:bg-gray-400"
                 disabled={loading}
-              />
-            </div>
+              >
+                {loading ? 'Sending OTP...' : 'Send OTP'}
+              </button>
+            </form>
+          ) : (
+            // STEP 2: OTP VERIFICATION
+            <form onSubmit={handleVerifyOTP}>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800">Verify OTP</h2>
+              <p className="text-gray-600 text-sm mb-6">
+                Enter the 6-digit code sent to <span className="font-semibold">{email}</span>
+              </p>
 
-            <div className="mb-8">
-              <input
-                type="password"
-                name="password"
-                placeholder="Enter password"
-                className="w-full bg-transparent border-b border-gray-400 text-black text-base md:text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500"
-                value={formData.password}
-                onChange={handleChange}
+              <div className="mb-8">
+                <input
+                  type="text"
+                  placeholder="000000"
+                  className="w-full bg-transparent border-b border-gray-400 text-black text-base md:text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500 text-center tracking-widest"
+                  value={otp}
+                  onChange={(e) => {
+                    // Only allow digits
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                    setOtp(value);
+                  }}
+                  disabled={loading}
+                  maxLength="6"
+                  inputMode="numeric"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-full transition-colors disabled:bg-gray-400 mb-4"
                 disabled={loading}
-              />
-            </div>
+              >
+                {loading ? 'Verifying...' : 'Verify & Login'}
+              </button>
 
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-full transition-colors"
-
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-          </form>
+              <button
+                type="button"
+                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 rounded-full transition-colors"
+                onClick={handleBackToEmail}
+                disabled={loading}
+              >
+                Back
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
-  )
-
+  );
 }
 
 export default LoginPage;

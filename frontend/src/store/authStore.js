@@ -5,6 +5,8 @@ const useAuthStore = create((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  otpSent: false, // Track if OTP has been sent
+  userEmail: null, // Store email temporarily for OTP verification
 
   // Initialize auth state by checking current session
   initializeAuth: async () => {
@@ -27,7 +29,7 @@ const useAuthStore = create((set) => ({
         return false;
       }
     } catch (error) {
-      console.error("Error initializing auth:", error);
+      console.log("Auth init: User not logged in (normal)");
       set({
         user: null,
         isAuthenticated: false,
@@ -37,7 +39,71 @@ const useAuthStore = create((set) => ({
     }
   },
 
-  // Login user
+  // Send OTP to email
+  sendOTP: async (email) => {
+    try {
+      const response = await axiosClient.post("/send-otp", { email });
+
+      if (response.data?.success) {
+        set({
+          otpSent: true,
+          userEmail: email,
+        });
+        return { success: true, message: "OTP sent to your email" };
+      }
+
+      return {
+        success: false,
+        message: response.data?.message || "Failed to send OTP",
+      };
+    } catch (error) {
+      console.error("Send OTP error:", error);
+
+      if (!error.response) {
+        return { success: false, message: "Backend not reachable" };
+      }
+
+      return {
+        success: false,
+        message: error.response?.data?.message || "Failed to send OTP",
+      };
+    }
+  },
+
+  // Verify OTP and login
+  verifyOTP: async (email, otp) => {
+    try {
+      const response = await axiosClient.post("/verify-otp", { email, otp });
+
+      if (response.data?.success) {
+        set({
+          user: response.data.data,
+          isAuthenticated: true,
+          otpSent: false,
+          userEmail: null,
+        });
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        message: response.data?.message || "OTP verification failed",
+      };
+    } catch (error) {
+      console.error("Verify OTP error:", error);
+
+      if (!error.response) {
+        return { success: false, message: "Backend not reachable" };
+      }
+
+      return {
+        success: false,
+        message: error.response?.data?.message || "Invalid OTP",
+      };
+    }
+  },
+
+  // Legacy login method (kept for backward compatibility)
   login: async (email, password) => {
     try {
       const response = await axiosClient.post("/login", {
@@ -86,6 +152,8 @@ const useAuthStore = create((set) => ({
       set({
         user: null,
         isAuthenticated: false,
+        otpSent: false,
+        userEmail: null,
       });
       // Force navigation to home page
       window.location.href = '/';
@@ -97,6 +165,8 @@ const useAuthStore = create((set) => ({
     set({
       user: null,
       isAuthenticated: false,
+      otpSent: false,
+      userEmail: null,
     });
   },
 
@@ -113,6 +183,14 @@ const useAuthStore = create((set) => ({
         isAuthenticated: false,
       });
     }
+  },
+
+  // Reset OTP state
+  resetOTPState: () => {
+    set({
+      otpSent: false,
+      userEmail: null,
+    });
   },
 }));
 

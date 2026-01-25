@@ -1,16 +1,16 @@
 import supabase from "../config/db.js";
-
+import bcrypt from "bcrypt";
+import { sendOTPEmail } from "../config/mailer.js";
+import { generateOTP, getOTPExpiryTime, isOTPValid } from "../utils/otpUtils.js";
 
 // Authentication middleware
 export const requireAuth = (req, res, next) => {
-  console.log(`[AUTH-CHECK] Session ID: ${req.sessionID}`);
+  console.log(`[AUTH-CHECK] ${req.method} ${req.path} - Session ID: ${req.sessionID}`);
   console.log(`[AUTH-CHECK] Session exists: ${!!req.session}`);
   console.log(`[AUTH-CHECK] User in session: ${!!req.session?.user}`);
-  console.log(`[AUTH-CHECK] User email: ${req.session?.user?.email || 'none'}`);
-  console.log(`[AUTH-CHECK] Full session data:`, JSON.stringify(req.session, null, 2));
 
   if (!req.session || !req.session.user) {
-    console.log(`[AUTH-CHECK] ❌ FAILED - No user in session`);
+    console.log(`[AUTH-CHECK] ❌ FAILED - No user in session for path: ${req.path}`);
     return res.status(401).json({
       success: false,
       message: 'Authentication required'
@@ -3352,6 +3352,241 @@ export const downloadGradeSheets = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: err.message
+    });
+  }
+};
+
+/* ========================================
+   OTP-BASED LOGIN ENDPOINTS
+======================================== */
+
+/**
+ * Send OTP to user email
+ * POST /send-otp
+ * Body: { email }
+ */
+export const sendOTP = async (req, res) => {
+  const { email } = req.body;
+
+  console.log("[SEND-OTP] Request received for email:", email);
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "Email is required",
+    });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    // Check if user exists
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id, email, first_name, last_name, role")
+      .eq("email", normalizedEmail)
+      .single();
+
+    if (userError || !user) {
+      console.log("[SEND-OTP] User not found for email:", normalizedEmail);
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiresAt = getOTPExpiryTime();
+
+    console.log("[SEND-OTP] Generated OTP for", normalizedEmail, "- OTP:", otp);
+
+    // Store OTP in database
+    const { data: otpRecord, error: otpError } = await supabase
+      .from("otp_codes")
+      .insert({
+        email: normalizedEmail,
+        otp_code: otp,
+        expires_at: expiresAt,
+        created_ip: req.ip,
+      })
+      .select()
+      .single();
+
+    if (otpError) {
+      console.error("[SEND-OTP] Error storing OTP:", otpError.message);
+      throw otpError;
+    }
+
+    // Send OTP via email
+    try {
+      await sendOTPEmail(email, otp);
+      console.log("[SEND-OTP] ✅ OTP sent successfully to", email);
+
+      return res.status(200).json({
+        success: true,
+        message: "OTP sent to your email",
+        // Don't send OTP to client, only to email
+      });
+    } catch (emailError) {
+      console.error("[SEND-OTP] Error sending email:", emailError.message);
+
+      // Delete the OTP record if email fails
+      await supabase
+        .from("otp_codes")
+        .delete()
+        .eq("id", otpRecord.id);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP. Please try again.",
+      });
+    }
+  } catch (err) {
+    console.error("[SEND-OTP] Unexpected error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Verify OTP and login user
+ * POST /verify-otp
+ * Body: { email, otp }
+ */
+export const verifyOTP = async (req, res) => {
+  const { email, otp } = req.body;
+
+  console.log("[VERIFY-OTP] Request received for email:", email);
+
+  if (!email || !otp) {
+    return res.status(400).json({
+      success: false,
+      message: "Email and OTP are required",
+    });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    // Check if user exists
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .single();
+
+    if (userError || !user) {
+      console.log("[VERIFY-OTP] User not found for email:", normalizedEmail);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or OTP",
+      });
+    }
+
+    // Get valid OTP records
+    const { data: otpRecords, error: otpError } = await supabase
+      .from("otp_codes")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .eq("is_used", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (otpError || !otpRecords || otpRecords.length === 0) {
+      console.log("[VERIFY-OTP] No valid OTP found for email:", email);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    const otpRecord = otpRecords[0];
+    console.log("[VERIFY-OTP] Comparing OTP for", email, ": Provided:", otp, "Stored:", otpRecord.otp_code);
+
+    // Check if OTP is expired
+    // Use the robust utility function which handles timezone issues
+    const isValid = isOTPValid(otpRecord.expires_at);
+
+    console.log(`[VERIFY-OTP] Expiry Check - Valid: ${isValid}`);
+
+    if (!isValid) {
+      console.log("[VERIFY-OTP] OTP expired for email:", email);
+
+      // Mark as used
+      await supabase
+        .from("otp_codes")
+        .update({ is_used: true, used_at: new Date().toISOString() })
+        .eq("id", otpRecord.id);
+
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired. Please request a new one.",
+      });
+    }
+
+    // Verify OTP matches
+    if (otpRecord.otp_code !== otp) {
+      console.log("[VERIFY-OTP] ❌ OTP mismatch for email:", email, "Expected:", otpRecord.otp_code, "Received:", otp);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    console.log("[VERIFY-OTP] ✅ OTP match successful for", email);
+
+    // Mark OTP as used
+    const { error: updateError } = await supabase
+      .from("otp_codes")
+      .update({
+        is_used: true,
+        used_at: new Date().toISOString(),
+      })
+      .eq("id", otpRecord.id);
+
+    if (updateError) {
+      console.error("[VERIFY-OTP] Error marking OTP as used:", updateError.message);
+    }
+
+    /* ========================================
+       Create session after OTP verification
+    ======================================== */
+    req.session.user = {
+      user_id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: user.role,
+    };
+
+    console.log("[VERIFY-OTP] ✅ OTP verified, creating session for:", email);
+
+    // Force session save
+    req.session.save((err) => {
+      if (err) {
+        console.error("[VERIFY-OTP] Session save error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Session creation failed",
+        });
+      }
+
+      console.log("[VERIFY-OTP] Session saved successfully. SID:", req.sessionID);
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: req.session.user,
+      });
+    });
+  } catch (err) {
+    console.error("[VERIFY-OTP] Unexpected error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
     });
   }
 };
