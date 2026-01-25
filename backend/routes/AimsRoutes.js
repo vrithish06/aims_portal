@@ -48,7 +48,12 @@ import {
   getAllInstructors,
   getCourseOfferingInstructors,
   bulkApproveEnrollments,
-  uploadGrades
+  uploadGrades,
+  getAllSessions,
+  getOfferingsBySession,
+  bulkUpdateOfferingStatus,
+  calculateCGPAForSession,
+  downloadGradeSheets
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -289,5 +294,21 @@ router.get('/offering/:offeringId/upload-test', (req, res) => {
 
 // Actual grade upload endpoint
 router.post('/offering/:offeringId/upload-grades', uploadGrades);
+
+// --- CURRENT SESSION DETAILS ROUTES ---
+// Get all available academic sessions
+router.get('/session/list', requireAuth, requireRole('admin'), getAllSessions);
+
+// Get course offerings for a specific session
+router.get('/session/:session/offerings', requireAuth, requireRole('admin'), getOfferingsBySession);
+
+// Bulk update offering status for multiple offerings
+router.post('/session/bulk-update-offering-status', requireAuth, requireRole('admin'), bulkUpdateOfferingStatus);
+
+// Calculate CGPA for a session
+router.post('/session/calculate-cgpa', requireAuth, requireRole('admin'), calculateCGPAForSession);
+
+// Download grade sheets for multiple offerings
+router.post('/session/download-grade-sheets', requireAuth, requireRole('admin'), downloadGradeSheets);
 
 export default router;

@@ -1,76 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
-import {
-  Users,
-  Mail,
-  BookOpen,
-  Search,
-  Check,
-  ChevronDown,
-  X,
-  GraduationCap
-} from "lucide-react";
-
-/* ================= FILTER DROPDOWN ================= */
-function FilterDropdown({ label, options, selected, setSelected }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    window.addEventListener("mousedown", handler);
-    return () => window.removeEventListener("mousedown", handler);
-  }, []);
-
-  const toggleOption = (opt) => {
-    const newSet = new Set(selected);
-    if (newSet.has(opt)) newSet.delete(opt);
-    else newSet.add(opt);
-    setSelected(newSet);
-  };
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="px-4 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-2 transition-colors"
-      >
-        {label}
-        {selected.size > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-600 rounded-full border border-white shadow-sm">
-            {selected.size}
-          </span>
-        )}
-        <ChevronDown className="w-3 h-3" />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 max-h-64 overflow-y-auto">
-          {options.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => toggleOption(opt)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-50 text-left transition-colors"
-            >
-              <span
-                className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.has(opt)
-                  ? "bg-blue-600 border-blue-600 text-white"
-                  : "border-slate-300"
-                  }`}
-              >
-                {selected.has(opt) && <Check className="w-3 h-3" />}
-              </span>
-              {opt}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import axiosClient from "../api/axiosClient";
+import { Users, Mail, BookOpen, Calendar } from "lucide-react";
 
 export default function MyAdviseesPage() {
   const user = useAuthStore((state) => state.user);
@@ -80,13 +12,6 @@ export default function MyAdviseesPage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
-
-  // Filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [degreeFilter, setDegreeFilter] = useState(new Set());
-  const [batchFilter, setBatchFilter] = useState(new Set());
-  const [branchFilter, setBranchFilter] = useState(new Set());
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "instructor") {
@@ -99,16 +24,15 @@ export default function MyAdviseesPage() {
   const fetchAdvisees = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/advisor/my-advisees", { credentials: "include" });
-      const data = await res.json();
-
-      if (data.success) {
-        setAdvisees(data.data || []);
-      } else {
-        console.error("Failed to fetch advisees:", data);
-      }
+      // Fetch advisees using the dedicated endpoint that handles advisor logic
+      const response = await axiosClient.get('/enrollment/advisees');
+      
+      console.log("Advisees response:", response.data);
+      setAdvisees(response.data.data || []);
     } catch (err) {
       console.error("Error fetching advisees:", err);
+      // If error, show empty list
+      setAdvisees([]);
     } finally {
       setLoading(false);
     }
@@ -116,49 +40,14 @@ export default function MyAdviseesPage() {
 
   const viewStudentEnrollments = async (student) => {
     setSelectedStudent(student);
-    setEnrollmentsLoading(true);
-
-    try {
-      const res = await fetch(
-        `/advisor/student/${student.student_id}/enrollments`,
-        { credentials: "include" }
-      );
-      const data = await res.json();
-      setEnrollments(data.data || []);
-    } catch (err) {
-      console.error("Error fetching enrollments:", err);
+    
+    // The enrollments are already included in the student data from the API
+    // Just extract them from the student object
+    if (student.enrollments && student.enrollments.length > 0) {
+      setEnrollments(student.enrollments);
+    } else {
       setEnrollments([]);
-    } finally {
-      setEnrollmentsLoading(false);
     }
-  };
-
-  const getUniqueValues = (key) => {
-    return [...new Set(advisees.map(a => a[key]).filter(Boolean))].sort();
-  };
-
-  const filteredAdvisees = advisees.filter(student => {
-    const name = `${student.users?.first_name} ${student.users?.last_name}`.toLowerCase();
-    const email = student.email?.toLowerCase() || "";
-    const query = searchQuery.toLowerCase();
-
-    const matchesSearch = !searchQuery || name.includes(query) || email.includes(query);
-    const matchesDegree = degreeFilter.size === 0 || degreeFilter.has(student.degree);
-    const matchesBatch = batchFilter.size === 0 || batchFilter.has(String(student.batch));
-    const matchesBranch = branchFilter.size === 0 || branchFilter.has(student.branch);
-
-    return matchesSearch && matchesDegree && matchesBatch && matchesBranch;
-  });
-
-  const clearAllFilters = () => {
-    setDegreeFilter(new Set());
-    setBatchFilter(new Set());
-    setBranchFilter(new Set());
-    setSearchQuery('');
-  };
-
-  const hasActiveFilters = () => {
-    return degreeFilter.size > 0 || batchFilter.size > 0 || branchFilter.size > 0 || searchQuery;
   };
 
   if (!isAuthenticated || user?.role !== "instructor") {
@@ -447,6 +336,116 @@ export default function MyAdviseesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Selected Student Enrollments */}
+        {selectedStudent && (
+          <div>
+            {/* Back Button */}
+            <button
+              onClick={() => {
+                setSelectedStudent(null);
+                setEnrollments([]);
+              }}
+              className="mb-6 text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              ← Back to Advisees
+            </button>
+
+            {/* Student Header */}
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {selectedStudent.users?.first_name} {selectedStudent.users?.last_name}
+                  </h2>
+                  <p className="text-gray-600">{selectedStudent.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="font-semibold text-gray-700">Degree</p>
+                  <p className="text-gray-600">{selectedStudent.degree}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Branch</p>
+                  <p className="text-gray-600">{selectedStudent.branch}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Batch</p>
+                  <p className="text-gray-600">{selectedStudent.batch}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Enrollments */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <BookOpen className="w-6 h-6 text-indigo-600" />
+                <h3 className="text-xl font-bold text-gray-800">Enrollments</h3>
+              </div>
+
+              {enrollments.length === 0 && (
+                <p className="text-gray-500 text-center py-8">No enrollments found</p>
+              )}
+
+              {enrollments.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100 border-b-2 border-gray-300">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Course</th>
+                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Code</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">Session</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">Type</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">Status</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enrollments.map((enrollment) => (
+                        <tr key={enrollment.enrollment_id} className="border-b hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <span className="font-medium text-gray-800">
+                              {enrollment.course_offering?.course?.title || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {enrollment.course_offering?.course?.code || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 text-center text-gray-600">
+                            {enrollment.course_offering?.acad_session || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                              {enrollment.enrol_type || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                enrollment.enrol_status === "enrolled"
+                                  ? "bg-green-100 text-green-800"
+                                  : enrollment.enrol_status === "pending advisor approval"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {enrollment.enrol_status || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-gray-600 font-semibold">
+                            {enrollment.grade || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
