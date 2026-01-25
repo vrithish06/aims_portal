@@ -46,7 +46,7 @@ function FilterDropdown({ label, options, selected, setSelected }) {
       >
         {label}
         {selected.size > 0 && (
-          <span className="px-2 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded-full">
+          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-600 rounded-full border border-white shadow-sm">
             {selected.size}
           </span>
         )}
@@ -62,11 +62,10 @@ function FilterDropdown({ label, options, selected, setSelected }) {
               className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-50 text-left transition-colors"
             >
               <span
-                className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                  selected.has(opt)
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "border-slate-300"
-                }`}
+                className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.has(opt)
+                  ? "bg-blue-600 border-blue-600 text-white"
+                  : "border-slate-300"
+                  }`}
               >
                 {selected.has(opt) && <Check className="w-3 h-3" />}
               </span>
@@ -304,18 +303,16 @@ function CourseDetailsPage() {
             <div className="relative" ref={offeringStatusRef}>
               <button
                 onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 border transition-all ${
-                  offering.status === "Enrolling"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : offering.status === "Canceled"
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 border transition-all ${offering.status === "Enrolling"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : offering.status === "Canceled"
                     ? "bg-rose-50 text-rose-700 border-rose-200"
                     : "bg-slate-50 text-slate-700 border-slate-200"
-                }`}
+                  }`}
               >
                 <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    offering.status === "Enrolling" ? "bg-emerald-500" : "bg-slate-400"
-                  } animate-pulse`}
+                  className={`w-2.5 h-2.5 rounded-full ${offering.status === "Enrolling" ? "bg-emerald-500" : "bg-slate-400"
+                    } animate-pulse`}
                 />
                 {offering.status}
                 <ChevronDown className="w-4 h-4" />
@@ -337,18 +334,16 @@ function CourseDetailsPage() {
             </div>
           ) : (
             <div
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 border ${
-                offering.status === "Enrolling"
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : offering.status === "Canceled"
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 border ${offering.status === "Enrolling"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : offering.status === "Canceled"
                   ? "bg-rose-50 text-rose-700 border-rose-200"
                   : "bg-slate-50 text-slate-700 border-slate-200"
-              }`}
+                }`}
             >
               <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  offering.status === "Enrolling" ? "bg-emerald-500" : "bg-slate-400"
-                }`}
+                className={`w-2.5 h-2.5 rounded-full ${offering.status === "Enrolling" ? "bg-emerald-500" : "bg-slate-400"
+                  }`}
               />
               {offering.status}
             </div>
@@ -364,11 +359,10 @@ function CourseDetailsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-7 py-4 text-sm font-bold transition-all relative ${
-                activeTab === tab.id
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50/60"
-              }`}
+              className={`flex items-center gap-2 px-7 py-4 text-sm font-bold transition-all relative ${activeTab === tab.id
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50/60"
+                }`}
             >
               <tab.icon className="w-4.5 h-4.5" />
               {tab.label}
@@ -380,100 +374,130 @@ function CourseDetailsPage() {
       <main className="max-w-[1600px] mx-auto p-6 md:p-8">
         {/* MAIN TAB */}
         {activeTab === "main" && (
-          <div className="space-y-10">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <p className="text-xs font-bold uppercase text-slate-500 mb-1">Credits (L-T-P)</p>
-                <p className="text-2xl font-black text-slate-900">{course?.ltp || "—"}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* LEFT COLUMN - Course Info */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Basic Info Section */}
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 text-lg">Course Information</h3>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                    <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Credits (L-T-P)</span>
+                    <span className="text-base font-semibold text-slate-900 mt-1 sm:mt-0">{course?.ltp || "—"}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                    <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Slot</span>
+                    <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                      <span className="px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700">
+                        {offering.slot || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                    <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Section</span>
+                    <span className="text-base font-semibold text-slate-900 mt-1 sm:mt-0">{offering.section || "—"}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                    <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Total Enrolled</span>
+                    <span className="text-base font-semibold text-slate-900 mt-1 sm:mt-0">{enrolledStudents.length} Students</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <p className="text-xs font-bold uppercase text-slate-500 mb-1">Slot</p>
-                <p className="text-2xl font-black text-slate-900">{offering.slot || "N/A"}</p>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <p className="text-xs font-bold uppercase text-slate-500 mb-1">Section</p>
-                <p className="text-2xl font-black text-slate-900">{offering.section || "—"}</p>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <p className="text-xs font-bold uppercase text-slate-500 mb-1">Enrolled</p>
-                <p className="text-2xl font-black text-slate-900">{enrolledStudents.length}</p>
-              </div>
-            </div>
 
-            {/* Crediting Targets */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/70">
-                <h3 className="text-lg font-bold text-slate-800">Crediting Categorization</h3>
-              </div>
-              <div className="p-6">
+              {/* Crediting Rules Section */}
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 text-lg">Enrollment Criteria</h3>
+                </div>
+
                 {offering.targets?.length > 0 ? (
-                  <div className="space-y-4">
-                    {offering.targets.map((t, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-slate-50 border border-slate-100 rounded-xl hover:border-blue-200 transition-colors"
-                      >
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            {t.degree || "All Degrees"} / {t.branch || "All Branches"}
-                          </div>
-                          <div className="text-sm text-slate-500 mt-1">
-                            Batch: {t.batch || "All"}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {t.offering_type?.map((type, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100"
-                            >
-                              {type}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="divide-y divide-slate-100">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50/50 text-slate-500 font-medium">
+                        <tr>
+                          <th className="px-6 py-3 font-semibold">Degree / Branch</th>
+                          <th className="px-6 py-3 font-semibold">Batch</th>
+                          <th className="px-6 py-3 font-semibold text-right">Allowed Types</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {offering.targets.map((t, i) => (
+                          <tr key={i} className="hover:bg-slate-50/30">
+                            <td className="px-6 py-4 font-medium text-slate-800">
+                              {t.degree || "All"} / {t.branch || "All"}
+                            </td>
+                            <td className="px-6 py-4 text-slate-600">{t.batch || "All"}</td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex flex-wrap gap-1.5 justify-end">
+                                {t.offering_type?.map((type, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded border border-blue-100">
+                                    {type}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-slate-400">
-                    No specific crediting rules defined.
+                  <div className="p-8 text-center text-slate-500 text-sm">
+                    No specific enrollment criteria defined for this course.
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Instructors */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/70">
-                <h3 className="text-lg font-bold text-slate-800">Instructors</h3>
-              </div>
-              <div className="p-6">
+            {/* RIGHT COLUMN - Instructors */}
+            <div className="space-y-8">
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 text-lg">Course Instructor(s)</h3>
+                </div>
+
                 {offering.instructors?.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {offering.instructors.map((instr, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-4 p-5 bg-white border border-slate-100 rounded-xl hover:border-blue-200 transition-colors"
-                      >
-                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">
-                          {instr.name?.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900">{instr.name}</div>
+                  <div className="divide-y divide-slate-100">
+                    {[...offering.instructors]
+                      .sort((a, b) => (b.is_coordinator ? 1 : 0) - (a.is_coordinator ? 1 : 0))
+                      .map((instr, idx) => (
+                        <div key={idx} className="p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm border border-slate-200 shrink-0">
+                              {instr.name?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm">{instr.name}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{instr.email}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{instr.branch || "Faculty"}</p>
+                            </div>
+                          </div>
                           {instr.is_coordinator && (
-                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md mt-1 inline-block">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 shrink-0">
                               Coordinator
                             </span>
                           )}
-                          <div className="text-sm text-slate-600 mt-1">{instr.branch}</div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-slate-400">No instructors assigned</div>
+                  <div className="p-8 text-center text-slate-500 text-sm">
+                    Instructor information to be announced.
+                  </div>
                 )}
+              </div>
+
+              {/* Additional Meta (Optional Placeholders) */}
+              <div className="bg-blue-50/50 rounded-xl border border-blue-100 p-5">
+                <h4 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  Course Description
+                </h4>
+                <p className="text-sm text-blue-800/80 leading-relaxed">
+                  {course?.description || "No description provided for this course."}
+                </p>
               </div>
             </div>
           </div>
@@ -525,17 +549,20 @@ function CourseDetailsPage() {
                 Enrolled only
               </label>
 
-              {(enrollmentTypeFilter.size > 0 ||
-                statusFilter.size > 0 ||
-                searchQuery ||
-                showOnlyEnrolled) && (
+              <div className="w-14 ml-2 flex justify-center">
                 <button
                   onClick={clearAllFilters}
-                  className="btn btn-ghost btn-sm text-slate-600"
+                  className={`btn btn-ghost btn-sm text-slate-600 transition-all duration-200 ${enrollmentTypeFilter.size > 0 ||
+                    statusFilter.size > 0 ||
+                    searchQuery ||
+                    showOnlyEnrolled
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-2 pointer-events-none"
+                    }`}
                 >
                   Clear
                 </button>
-              )}
+              </div>
 
               {isTeacherOrAdmin && filteredStudents.length > 0 && (
                 <button
@@ -586,13 +613,12 @@ function CourseDetailsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span
-                          className={`inline-block px-3 py-1 text-xs font-medium rounded-lg uppercase ${
-                            s.enrol_status === "enrolled"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : s.enrol_status?.includes("pending")
+                          className={`inline-block px-3 py-1 text-xs font-medium rounded-lg uppercase ${s.enrol_status === "enrolled"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : s.enrol_status?.includes("pending")
                               ? "bg-amber-100 text-amber-700"
                               : "bg-rose-100 text-rose-700"
-                          }`}
+                            }`}
                         >
                           {s.enrol_status?.replace(/_/g, " ")}
                         </span>
