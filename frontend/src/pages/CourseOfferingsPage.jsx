@@ -632,7 +632,7 @@ function CourseOfferingsPage() {
                               ) : (
                                 <>
                                   {selectedEnrollType[offering.offering_id] ? selectedEnrollType[offering.offering_id] : 'Enroll'}
-                                  <ChevronDown className="w-4 h-4 ml-auto" />
+                                  <ChevronDown className="w-4 h-4" />
                                 </>
                               )}
                             </button>
