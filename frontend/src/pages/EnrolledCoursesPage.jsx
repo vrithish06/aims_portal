@@ -1,18 +1,79 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axiosClient from "../api/axiosClient";
 import useAuthStore from "../store/authStore";
 import toast from "react-hot-toast";
-import { 
-  BookOpen, 
-  Search, 
-  X, 
-  ListFilter, 
-  User, 
-  Calendar, 
-  Clock, 
-  GraduationCap, 
-  Award 
+import {
+  BookOpen,
+  Search,
+  X,
+  User,
+  Calendar,
+  Clock,
+  GraduationCap,
+  Award,
+  ChevronDown,
+  Check
 } from "lucide-react";
+
+/* ================= FILTER DROPDOWN ================= */
+function FilterDropdown({ label, options, selected, setSelected }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, []);
+
+  const toggleOption = (opt) => {
+    const newSet = new Set(selected);
+    if (newSet.has(opt)) newSet.delete(opt);
+    else newSet.add(opt);
+    setSelected(newSet);
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="px-4 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+      >
+        {label}
+        {selected.size > 0 && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-600 rounded-full border border-white shadow-sm">
+            {selected.size}
+          </span>
+        )}
+        <ChevronDown className="w-3 h-3" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 max-h-64 overflow-y-auto">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => toggleOption(opt)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-50 text-left transition-colors"
+            >
+              <span
+                className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.has(opt)
+                  ? "bg-blue-600 border-blue-600 text-white"
+                  : "border-slate-300"
+                  }`}
+              >
+                {selected.has(opt) && <Check className="w-3 h-3" />}
+              </span>
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EnrolledCoursesPage() {
   const [courses, setCourses] = useState([]);
@@ -22,17 +83,10 @@ function EnrolledCoursesPage() {
   const [dropping, setDropping] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
 
-  const [tempFilters, setTempFilters] = useState({
-    status: [],
-    session: [],
-  });
-
-  const [filters, setFilters] = useState({
-    status: [],
-    session: [],
-  });
+  // Filter States (Set based)
+  const [statusFilter, setStatusFilter] = useState(new Set());
+  const [sessionFilter, setSessionFilter] = useState(new Set());
 
   const user = useAuthStore((state) => state.user);
 
@@ -90,7 +144,7 @@ function EnrolledCoursesPage() {
     // If modal is open, use that enrollment, otherwise find it
     const enrollment = selectedEnrollment || courses.find(c => c.id === enrollmentId);
     if (!enrollment) return;
-    
+
     if (!window.confirm("Are you sure you want to withdraw from this course?")) return;
 
     try {
@@ -113,7 +167,7 @@ function EnrolledCoursesPage() {
     }
   };
 
-  const handleDrop = async () => {
+  const handleDrop = async (enrollmentId) => {
     const enrollment = selectedEnrollment || courses.find(c => c.id === enrollmentId);
     if (!enrollment) return;
 
@@ -158,52 +212,27 @@ function EnrolledCoursesPage() {
       courseCode.includes(searchQuery.toLowerCase()) ||
       courseTitle.includes(searchQuery.toLowerCase());
 
-    const matchesFilters =
-      (filters.status.length === 0 || filters.status.includes(course.enrol_status)) &&
-      (filters.session.length === 0 ||
-        filters.session.includes(course.course_offering?.acad_session));
+    const matchesStatus = statusFilter.size === 0 || statusFilter.has(course.enrol_status);
+    const matchesSession = sessionFilter.size === 0 || sessionFilter.has(course.course_offering?.acad_session);
 
-    return matchesSearch && matchesFilters;
+    return matchesSearch && matchesStatus && matchesSession;
   });
 
-  const toggleTempFilter = (category, value) => {
-    setTempFilters((prev) => ({
-      ...prev,
-      [category]: prev[category].includes(value)
-        ? prev[category].filter((v) => v !== value)
-        : [...prev[category], value],
-    }));
-  };
-
-  const applyFilters = () => {
-    setFilters(tempFilters);
-    setShowFilters(false);
-  };
-
-  const toggleFilters = () => {
-    if (showFilters) {
-      setShowFilters(false);
-    } else {
-      setTempFilters(filters);
-      setShowFilters(true);
-    }
-  };
-
   const clearAllFilters = () => {
-    const emptyFilters = { status: [], session: [] };
-    setFilters(emptyFilters);
-    setTempFilters(emptyFilters);
+    setStatusFilter(new Set());
+    setSessionFilter(new Set());
     setSearchQuery("");
   };
 
   const hasActiveFilters = () => {
-    return Object.values(filters).some((f) => f.length > 0) || !!searchQuery;
+    return statusFilter.size > 0 || sessionFilter.size > 0 || !!searchQuery;
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
+        <span className="loading loading-spinner loading-lg text-blue-600"></span>
+        <p className="mt-4 text-slate-500 font-medium animate-pulse">Fetching your courses...</p>
       </div>
     );
   }
@@ -223,289 +252,208 @@ function EnrolledCoursesPage() {
         </p>
       </div>
 
-      {/* Search Bar with Filter Button */}
+      {/* Search Bar & Filters */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex gap-3">
-          <button
-            onClick={toggleFilters}
-            className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors flex-shrink-0 ${
-              showFilters
-                ? "bg-amber-500 text-white border-amber-500"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            {showFilters ? (
-              <>
-                <X className="w-5 h-5" />
-                <span className="font-medium">Close</span>
-              </>
-            ) : (
-              <>
-                <ListFilter className="w-5 h-5" />
-                <span className="font-medium">Filters</span>
-                {hasActiveFilters() && (
-                  <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {Object.values(filters).reduce((acc, curr) => acc + curr.length, 0)}
-                  </span>
-                )}
-              </>
-            )}
-          </button>
-
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by course code or name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30"
             />
+          </div>
+
+          <FilterDropdown
+            label="Status"
+            options={getUniqueValues("status")}
+            selected={statusFilter}
+            setSelected={setStatusFilter}
+          />
+          <FilterDropdown
+            label="Session"
+            options={getUniqueValues("session")}
+            selected={sessionFilter}
+            setSelected={setSessionFilter}
+          />
+
+          <div className="w-14 ml-2 flex justify-center">
+            <button
+              onClick={clearAllFilters}
+              className={`btn btn-ghost btn-sm text-slate-600 transition-all duration-200 ${statusFilter.size > 0 || sessionFilter.size > 0 || searchQuery
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2 pointer-events-none"
+                }`}
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="p-4 flex gap-4">
-        {/* Filters Sidebar */}
-        {showFilters && (
-          <div className="w-80 flex-shrink-0" onKeyPress={(e) => e.key === 'Enter' && applyFilters()}>
-            <div className="bg-blue-50 rounded-lg border border-blue-300 p-6 sticky top-24">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-gray-900">Filters</h3>
-                {Object.values(tempFilters).some((f) => f.length > 0) && (
-                  <button
-                    onClick={() => setTempFilters({ status: [], session: [] })}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                  >
-                    <X className="w-4 h-4" />
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              {/* Status Filter */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Status</h4>
-                <div className="space-y-2">
-                  {getUniqueValues("status").map((status) => (
-                    <label key={status} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tempFilters.status.includes(status)}
-                        onChange={() => toggleTempFilter("status", status)}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700 capitalize">{status}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Session Filter */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Session</h4>
-                <div className="space-y-2">
-                  {getUniqueValues("session").map((session) => (
-                    <label key={session} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tempFilters.session.includes(session)}
-                        onChange={() => toggleTempFilter("session", session)}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">{session}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={applyFilters}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                Apply Filters
-              </button>
-            </div>
+      <div className="py-8 px-4 w-full">
+        {hasActiveFilters() && (
+          <div className="mb-6 flex items-center justify-between bg-blue-50 border border-blue-100 px-4 py-3 rounded-xl">
+            <span className="text-blue-800 font-medium text-sm">
+              {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found
+            </span>
+            <button
+              onClick={clearAllFilters}
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              Clear all filters
+            </button>
           </div>
         )}
 
-        {/* Courses Grid */}
-        <div className="flex-1">
-          {hasActiveFilters() && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-blue-800 font-medium">
-                  {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found
-                </span>
-                <button
-                  onClick={clearAllFilters}
-                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+        {filteredCourses.length === 0 ? (
+          <div className="bg-white border border-slate-200 text-slate-500 px-6 py-12 rounded-xl text-center">
+            <BookOpen className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+            <span className="text-lg font-medium block">You haven't enrolled in any courses yet.</span>
+            <span className="text-sm text-slate-400">Visit the Browse Courses page to enroll.</span>
+          </div>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredCourses.map((enrollment) => {
+              const course = enrollment.course_offering?.course;
+              const offering = enrollment.course_offering;
+              const instructor = offering?.instructor?.users;
+
+              // Status Badge Helper
+              const getStatusStyle = (status) => {
+                switch (status?.toLowerCase()) {
+                  case 'enrolled': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                  case 'completed': return 'bg-blue-50 text-blue-700 border-blue-200';
+                  case 'withdrawn': return 'bg-orange-50 text-orange-700 border-orange-200';
+                  case 'dropped': return 'bg-red-50 text-red-700 border-red-200';
+                  default: return 'bg-slate-50 text-slate-700 border-slate-200';
+                }
+              };
+
+              return (
+                <div
+                  key={enrollment.id}
+                  onClick={() => handleEnrollmentClick(enrollment)}
+                  className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 flex flex-col cursor-pointer overflow-hidden"
                 >
-                  <X className="w-4 h-4" />
-                  Clear all filters
-                </button>
-              </div>
-            </div>
-          )}
-
-          {courses.length === 0 ? (
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-6 py-4 rounded-lg">
-              <span>You haven't enrolled in any courses yet. Visit the <strong>Browse Courses</strong> page to enroll.</span>
-            </div>
-          ) : (
-            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
-              {filteredCourses.map((enrollment) => {
-                const course = enrollment.course_offering?.course;
-                const offering = enrollment.course_offering;
-                const instructor = offering?.instructor?.users;
-
-                // Status Badge Helper
-                const getStatusStyle = (status) => {
-                  switch (status?.toLowerCase()) {
-                    case 'enrolled': return 'bg-green-100 text-green-700 border-green-200';
-                    case 'completed': return 'bg-blue-100 text-blue-700 border-blue-200';
-                    case 'withdrawn': return 'bg-orange-100 text-orange-700 border-orange-200';
-                    case 'dropped': return 'bg-red-100 text-red-700 border-red-200';
-                    default: return 'bg-gray-100 text-gray-700 border-gray-200';
-                  }
-                };
-
-                return (
-                  <div
-                    key={enrollment.id}
-                    onClick={() => handleEnrollmentClick(enrollment)}
-                    className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative"
-                  >
-                    {/* CARD HEADER */}
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <span className="inline-block text-xs font-bold tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded-md mb-2">
-                            {course?.code || 'N/A'}
-                          </span>
-                          <h3 className="text-lg font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-2">
-                            {course?.title || 'Untitled Course'}
-                          </h3>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border capitalize whitespace-nowrap ${getStatusStyle(enrollment.enrol_status)}`}>
-                          {enrollment.enrol_status || 'Unknown'}
+                  {/* CARD HEADER */}
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/30">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <span className="inline-block text-[10px] font-bold tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 mb-2">
+                          {course?.code || 'N/A'}
                         </span>
+                        <h3 className="text-lg font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {course?.title || 'Untitled Course'}
+                        </h3>
                       </div>
-                    </div>
-
-                    {/* CARD BODY */}
-                    <div className="p-5 flex-1 space-y-4">
-                      
-                      {/* Row 1: Instructor & Dept */}
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="truncate max-w-[120px]" title={instructor ? `${instructor.first_name} ${instructor.last_name}` : 'TBA'}>
-                            {instructor ? `${instructor.first_name} ${instructor.last_name}` : 'TBA'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <GraduationCap className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="truncate max-w-[100px]">{offering?.dept_name || 'N/A'}</span>
-                        </div>
-                      </div>
-
-                      {/* Row 2: Metrics Grid (Slot, Credits, Grade) */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* Slot */}
-                        <div className="bg-gray-50 rounded-lg p-2 flex flex-col items-center justify-center text-center">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Clock className="w-3 h-3 text-orange-500" />
-                            <span className="text-[10px] text-gray-400 font-bold uppercase">Slot</span>
-                          </div>
-                          <span className="text-sm font-bold text-gray-700">{offering?.slot || '-'}</span>
-                        </div>
-
-                        {/* Credits */}
-                        <div className="bg-gray-50 rounded-lg p-2 flex flex-col items-center justify-center text-center">
-                          <div className="flex items-center gap-1 mb-1">
-                            <BookOpen className="w-3 h-3 text-purple-500" />
-                            <span className="text-[10px] text-gray-400 font-bold uppercase">Credits</span>
-                          </div>
-                          <span className="text-sm font-bold text-gray-700">{course?.ltp || '-'}</span>
-                        </div>
-
-                        {/* Grade */}
-                        <div className={`rounded-lg p-2 flex flex-col items-center justify-center text-center ${enrollment.grade ? 'bg-green-50' : 'bg-gray-50'}`}>
-                          <div className="flex items-center gap-1 mb-1">
-                            <Award className={`w-3 h-3 ${enrollment.grade ? 'text-green-600' : 'text-gray-400'}`} />
-                            <span className={`text-[10px] font-bold uppercase ${enrollment.grade ? 'text-green-600' : 'text-gray-400'}`}>Grade</span>
-                          </div>
-                          <span className={`text-sm font-bold ${enrollment.grade ? 'text-green-700' : 'text-gray-400'}`}>
-                            {enrollment.grade || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Row 3: Session & Type */}
-                      <div className="flex items-center justify-between pt-2 text-xs text-gray-500 border-t border-dashed border-gray-200">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>{offering?.acad_session}</span>
-                        </div>
-                        <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-semibold uppercase tracking-wide">
-                          {enrollment.enrol_type}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* CARD FOOTER - Actions */}
-                    <div className="p-4 pt-0 mt-auto space-y-3" onClick={(e) => e.stopPropagation()}>
-                      {enrollment.enrol_status === 'enrolled' ? (
-                        <div className="flex gap-2">
-                          <button
-                            className="flex-1 bg-white border border-orange-200 text-orange-600 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors text-sm shadow-sm flex items-center justify-center gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleWithdraw(enrollment.id);
-                            }}
-                            disabled={withdrawing === enrollment.id}
-                          >
-                            {withdrawing === enrollment.id ? (
-                               <span className="loading loading-spinner loading-xs"></span>
-                            ) : "Withdraw"}
-                          </button>
-                          <button
-                            className="flex-1 bg-white border border-red-200 text-red-600 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm shadow-sm flex items-center justify-center gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDrop(enrollment.id);
-                            }}
-                            disabled={dropping === enrollment.id}
-                          >
-                            {dropping === enrollment.id ? (
-                              <span className="loading loading-spinner loading-xs"></span>
-                            ) : "Drop"}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-full py-2 bg-gray-50 text-gray-500 text-center text-sm font-medium rounded-lg border border-gray-200">
-                          Action Unavailable
-                        </div>
-                      )}
-                      
-                      <button
-                        className="w-full bg-blue-600 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm shadow-sm shadow-blue-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEnrollmentClick(enrollment);
-                        }}
-                      >
-                        View Full Details
-                      </button>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wide flex-shrink-0 ${getStatusStyle(enrollment.enrol_status)}`}>
+                        {enrollment.enrol_status || 'Unknown'}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* CARD BODY */}
+                  <div className="p-6 flex-1 space-y-5">
+                    {/* Instructor & Dept */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <User className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="font-medium truncate max-w-[120px]" title={instructor ? `${instructor.first_name} ${instructor.last_name}` : 'TBA'}>
+                          {instructor ? `${instructor.first_name} ${instructor.last_name}` : 'TBA'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <GraduationCap className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="font-medium truncate max-w-[80px]" title={offering?.dept_name || 'N/A'}>{offering?.dept_name || 'N/A'}</span>
+                      </div>
+                    </div>
+
+                    {/* Meta Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-50 rounded-lg p-2.5 flex items-center gap-2.5 border border-slate-100">
+                        <Clock className="w-3.5 h-3.5 text-amber-500" />
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide leading-none mb-0.5">Slot</span>
+                          <span className="text-xs font-bold text-slate-700 leading-none">{offering?.slot || '-'}</span>
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-2.5 flex items-center gap-2.5 border border-slate-100">
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide leading-none mb-0.5">Credits</span>
+                          <span className="text-xs font-bold text-slate-700 leading-none">{course?.ltp || '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Meta */}
+                    <div className="flex items-center justify-between pt-3 text-[11px] font-medium text-slate-500 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded">
+                        <Calendar className="w-3 h-3" />
+                        <span>{offering?.acad_session}</span>
+                      </div>
+                      <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wide border border-blue-100">
+                        {enrollment.enrol_type}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD FOOTER - Actions */}
+                  <div className="p-4 pt-0 mt-auto space-y-3" onClick={(e) => e.stopPropagation()}>
+                    {enrollment.enrol_status === 'enrolled' ? (
+                      <div className="flex gap-2">
+                        <button
+                          className="flex-1 bg-white border border-orange-200 text-orange-600 py-2 rounded-lg text-xs font-bold hover:bg-orange-50 transition-colors shadow-sm flex items-center justify-center gap-2 shadow-orange-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWithdraw(enrollment.id);
+                          }}
+                          disabled={withdrawing === enrollment.id}
+                        >
+                          {withdrawing === enrollment.id ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                          ) : "Withdraw"}
+                        </button>
+                        <button
+                          className="flex-1 bg-white border border-red-200 text-red-600 py-2 rounded-lg text-xs font-bold hover:bg-red-50 transition-colors shadow-sm flex items-center justify-center gap-2 shadow-red-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDrop(enrollment.id);
+                          }}
+                          disabled={dropping === enrollment.id}
+                        >
+                          {dropping === enrollment.id ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                          ) : "Drop"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-full py-2 bg-slate-50 text-slate-400 text-center text-xs font-bold rounded-lg border border-slate-200 uppercase tracking-wide">
+                        Action Unavailable
+                      </div>
+                    )}
+
+                    <button
+                      className="w-full bg-blue-600 text-white py-2.5 px-3 rounded-xl font-bold hover:bg-blue-700 transition-colors text-xs shadow-md shadow-blue-200 uppercase tracking-wide"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEnrollmentClick(enrollment);
+                      }}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Modal - Kept same logic but cleaned up styling slightly if needed */}
@@ -522,7 +470,7 @@ function EnrolledCoursesPage() {
                   {selectedEnrollment.course_offering?.course?.title}
                 </h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedEnrollment(null)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -539,13 +487,12 @@ function EnrolledCoursesPage() {
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <p className="text-sm font-semibold text-gray-600 mb-2">Status</p>
-                  <span className={`font-bold px-3 py-1 rounded ${
-                    selectedEnrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' : 
+                  <span className={`font-bold px-3 py-1 rounded ${selectedEnrollment.enrol_status === 'enrolled' ? 'text-green-600 bg-green-100' :
                     selectedEnrollment.enrol_status === 'completed' ? 'text-blue-600 bg-blue-100' :
-                    selectedEnrollment.enrol_status === 'student withdrawn' ? 'text-red-600 bg-red-100' :
-                    selectedEnrollment.enrol_status === 'student dropped' ? 'text-red-600 bg-red-100' :
-                    'text-yellow-600 bg-yellow-100'
-                  }`}>
+                      selectedEnrollment.enrol_status === 'student withdrawn' ? 'text-red-600 bg-red-100' :
+                        selectedEnrollment.enrol_status === 'student dropped' ? 'text-red-600 bg-red-100' :
+                          'text-yellow-600 bg-yellow-100'
+                    }`}>
                     {selectedEnrollment.enrol_status ? selectedEnrollment.enrol_status.charAt(0).toUpperCase() + selectedEnrollment.enrol_status.slice(1) : 'Pending'}
                   </span>
                 </div>
@@ -564,7 +511,7 @@ function EnrolledCoursesPage() {
                   </p>
                 </div>
 
-                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
                   <p className="text-xs font-bold text-orange-600 uppercase mb-1">Slot</p>
                   <p className="text-lg font-bold text-gray-900">
                     {selectedEnrollment.course_offering?.slot}
@@ -621,40 +568,39 @@ function EnrolledCoursesPage() {
               </div>
 
               {/* Action Buttons */}
-              {(selectedEnrollment.enrol_status === 'enrolled' || 
-                selectedEnrollment.enrol_status === 'pending advisor approval' || 
+              {(selectedEnrollment.enrol_status === 'enrolled' ||
+                selectedEnrollment.enrol_status === 'pending advisor approval' ||
                 selectedEnrollment.enrol_status === 'pending instructor approval') && (
-                <div className="border-t-2 border-orange-200 pt-6">
-                  <p className="text-lg font-bold text-gray-900 mb-4">Course Actions</p>
-                  <div className="flex gap-3">
-                    {selectedEnrollment.enrol_status === 'enrolled' && (
-                      <button 
-                        className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors"
-                        onClick={() => {
-                          handleWithdraw(selectedEnrollment);
-                        }}
-                        disabled={withdrawing === selectedEnrollment.enrollment_id}
-                      >
-                        {withdrawing === selectedEnrollment.enrollment_id ? 'Withdrawing...' : 'Withdraw'}
-                      </button>
-                    )}
-                    <button 
-                      className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                        selectedEnrollment.enrol_status === 'enrolled' 
-                          ? 'bg-red-500 text-white hover:bg-red-600' 
+                  <div className="border-t-2 border-orange-200 pt-6">
+                    <p className="text-lg font-bold text-gray-900 mb-4">Course Actions</p>
+                    <div className="flex gap-3">
+                      {selectedEnrollment.enrol_status === 'enrolled' && (
+                        <button
+                          className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                          onClick={() => {
+                            handleWithdraw(selectedEnrollment.id);
+                          }}
+                          disabled={withdrawing === selectedEnrollment.id}
+                        >
+                          {withdrawing === selectedEnrollment.id ? 'Withdrawing...' : 'Withdraw'}
+                        </button>
+                      )}
+                      <button
+                        className={`flex-1 py-2 rounded-lg font-medium transition-colors ${selectedEnrollment.enrol_status === 'enrolled'
+                          ? 'bg-red-500 text-white hover:bg-red-600'
                           : 'bg-gray-500 text-white hover:bg-gray-600'
-                      }`}
-                      onClick={() => {
-                        handleDrop(selectedEnrollment);
-                      }}
-                      disabled={dropping === selectedEnrollment.enrollment_id}
-                      title={selectedEnrollment.enrol_status !== 'enrolled' ? 'Can drop pending requests' : ''}
-                    >
-                      {dropping === selectedEnrollment.enrollment_id ? 'Dropping...' : 'Drop'}
-                    </button>
+                          }`}
+                        onClick={() => {
+                          handleDrop(selectedEnrollment.id);
+                        }}
+                        disabled={dropping === selectedEnrollment.id}
+                        title={selectedEnrollment.enrol_status !== 'enrolled' ? 'Can drop pending requests' : ''}
+                      >
+                        {dropping === selectedEnrollment.id ? 'Dropping...' : 'Drop'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
         </div>

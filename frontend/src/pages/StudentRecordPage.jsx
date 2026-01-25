@@ -207,8 +207,9 @@ function StudentRecordPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
+        <span className="loading loading-spinner loading-lg text-blue-600"></span>
+        <p className="mt-4 text-slate-500 font-medium animate-pulse">Loading your academic record...</p>
       </div>
     );
   }

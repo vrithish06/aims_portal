@@ -50,11 +50,10 @@ function FilterDropdown({ label, options, selected, setSelected }) {
               className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-50 text-left"
             >
               <span
-                className={`w-4 h-4 rounded border flex items-center justify-center ${
-                  selected.has(opt)
+                className={`w-4 h-4 rounded border flex items-center justify-center ${selected.has(opt)
                     ? 'bg-blue-600 border-blue-600 text-white'
                     : 'border-gray-300'
-                }`}
+                  }`}
               >
                 {selected.has(opt) && <Check className="w-3 h-3" />}
               </span>
@@ -380,6 +379,15 @@ function MyPendingWorksPage() {
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
+        <span className="loading loading-spinner loading-lg text-blue-600"></span>
+        <p className="mt-4 text-slate-500 font-medium animate-pulse">Fetching your pending tasks...</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated || user?.role !== 'instructor') {
     return (
