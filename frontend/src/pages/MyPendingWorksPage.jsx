@@ -83,6 +83,7 @@ function MyPendingWorksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState(new Set());
   const [typeFilter, setTypeFilter] = useState(new Set());
+  const [activeTab, setActiveTab] = useState('instructor');
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'instructor') {
@@ -255,6 +256,36 @@ function MyPendingWorksPage() {
     }
   };
 
+  // ✅ BULK REJECT BASED ON FILTERED DATA
+  const handleBulkReject = async (list, section) => {
+    if (list.length === 0 || actionUpdating) return;
+
+    try {
+      setActionUpdating("bulk");
+
+      const requests = list.map(e => {
+        const newStatus =
+          section === 'instructor'
+            ? 'instructor rejected'
+            : 'advisor rejected';
+
+        return axiosClient.put(
+          `/offering/${e.offering_id}/enrollments/${e.enrollment_id}`,
+          { enrol_status: newStatus }
+        );
+      });
+
+      await Promise.all(requests);
+
+      toast.success(`Rejected ${list.length} filtered records`);
+      fetchMyPendingWorks();
+    } catch {
+      toast.error("Bulk rejection failed");
+    } finally {
+      setActionUpdating(null);
+    }
+  };
+
 
   if (!isAuthenticated || user?.role !== 'instructor') {
     return (
@@ -413,49 +444,90 @@ function MyPendingWorksPage() {
           )}
         </div>
 
-        {/* INSTRUCTOR SECTION */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-600" />
+        {/* INSTRUCTOR & ADVISOR TABS */}
+        <div className="space-y-4">
+          {/* TAB HEADERS */}
+          <div className="flex gap-2 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('instructor')}
+              className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${
+                activeTab === 'instructor'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <BookOpen className="w-5 h-5" />
               Pending as Instructor ({filteredInstructor.length})
-            </h2>
+            </button>
 
-            {filteredInstructor.length > 0 && (
+            {isAdvisor && (
               <button
-                onClick={() => handleBulkApprove(filteredInstructor, "instructor")}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm"
+                onClick={() => setActiveTab('advisor')}
+                className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${
+                  activeTab === 'advisor'
+                    ? 'border-purple-600 text-purple-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
               >
-                Approve Filtered
+                <GraduationCap className="w-5 h-5" />
+                Pending as Advisor ({filteredAdvisor.length})
               </button>
             )}
           </div>
 
-          {renderTable(filteredInstructor, "instructor")}
-        </div>
-
-        {/* ADVISOR SECTION */}
-        {isAdvisor && (
+          {/* TAB CONTENT */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-purple-600" />
-                Pending as Advisor ({filteredAdvisor.length})
-              </h2>
+            {/* INSTRUCTOR TAB */}
+            {activeTab === 'instructor' && (
+              <>
+                <div className="flex justify-end gap-2">
+                  {filteredInstructor.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => handleBulkApprove(filteredInstructor, "instructor")}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm"
+                      >
+                        Approve Filtered
+                      </button>
+                      <button
+                        onClick={() => handleBulkReject(filteredInstructor, "instructor")}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm"
+                      >
+                        Reject Filtered
+                      </button>
+                    </>
+                  )}
+                </div>
+                {renderTable(filteredInstructor, "instructor")}
+              </>
+            )}
 
-              {filteredAdvisor.length > 0 && (
-                <button
-                  onClick={() => handleBulkApprove(filteredAdvisor, "advisor")}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm"
-                >
-                  Approve Filtered
-                </button>
-              )}
-            </div>
-
-            {renderTable(filteredAdvisor, "advisor")}
+            {/* ADVISOR TAB */}
+            {activeTab === 'advisor' && isAdvisor && (
+              <>
+                <div className="flex justify-end gap-2">
+                  {filteredAdvisor.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => handleBulkApprove(filteredAdvisor, "advisor")}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm"
+                      >
+                        Approve Filtered
+                      </button>
+                      <button
+                        onClick={() => handleBulkReject(filteredAdvisor, "advisor")}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm"
+                      >
+                        Reject Filtered
+                      </button>
+                    </>
+                  )}
+                </div>
+                {renderTable(filteredAdvisor, "advisor")}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
