@@ -1,6 +1,6 @@
 import express from 'express';
 import supabase from '../config/db.js';
-import bcrypt from 'bcrypt';
+
 import {
   getHelp,
   createUser,
@@ -221,8 +221,7 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
 
     console.log(`[ADMIN] Fixing password for: ${email}`);
 
-    // Hash the plain password
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    const hashedPassword = plainPassword;
 
     // Update in database
     const { data, error } = await supabase
@@ -267,7 +266,7 @@ router.get('/offering/:offeringId/upload-test', (req, res) => {
   console.log('  - has session:', !!req.session);
   console.log('  - has user:', !!req.session?.user);
   console.log('  - user email:', req.session?.user?.email);
-  
+
   if (!req.session?.user) {
     return res.status(401).json({
       success: false,

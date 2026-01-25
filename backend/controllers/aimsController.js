@@ -1,5 +1,5 @@
 import supabase from "../config/db.js";
-import bcrypt from "bcrypt";
+
 
 // Authentication middleware
 export const requireAuth = (req, res, next) => {
@@ -68,8 +68,7 @@ export const createUser = async (req, res) => {
   }
 
   try {
-    // hash password
-    const password_hashed = await bcrypt.hash(password, 10);
+    const password_hashed = password;
 
     const { data, error } = await supabase
       .from("users")
@@ -814,10 +813,7 @@ export const loginUser = async (req, res) => {
     /* -----------------------------
        2️⃣ Verify password
     ------------------------------ */
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      user.password_hashed
-    );
+    const isPasswordValid = (password === user.password_hashed);
 
     if (!isPasswordValid) {
       return res.status(401).json({

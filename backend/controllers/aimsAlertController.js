@@ -1,6 +1,6 @@
 import express from 'express';
 import supabase from '../config/db.js';
-import bcrypt from 'bcrypt';
+
 import {
   getHelp,
   createUser,
@@ -232,7 +232,7 @@ router.put('/offering/:offeringId/enrollments/:enrollmentId', requireAuth, updat
 // New endpoints for AddOfferingPage
 router.get('/courses/search', searchCourses);
 router.get('/instructors/all', requireAuth, getAllInstructors);
-router.get('/course/offering/instructors',requireAuth,getCourseOfferingInstructors);
+router.get('/course/offering/instructors', requireAuth, getCourseOfferingInstructors);
 
 router.post('/offering/create-with-instructors', requireAuth, requireRole('instructor'), createOfferingWithInstructors);
 
@@ -249,8 +249,7 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
 
     console.log(`[ADMIN] Fixing password for: ${email}`);
 
-    // Hash the plain password
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    const hashedPassword = plainPassword;
 
     // Update in database
     const { data, error } = await supabase
