@@ -89,13 +89,16 @@ function MyPendingWorksPage() {
       return;
     }
     fetchMyPendingWorks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, navigate]);
+
 
   const fetchMyPendingWorks = async () => {
     try {
       setLoading(true);
       const response = await axiosClient.get('/enrollment/my-pending-works');
       const data = response.data.data || {};
+
 
       setPendingAsInstructor(data.pendingAsInstructor || []);
       setPendingAsAdvisor(data.pendingAsAdvisor || []);
@@ -169,18 +172,24 @@ function MyPendingWorksPage() {
     if (actionUpdating) return;
     try {
       setActionUpdating(enrollment.enrollment_id);
+      let newStatus;
+      let successMessage;
 
-      const newStatus =
-        section === 'instructor'
-          ? 'pending advisor approval'
-          : 'enrolled';
+
+      if (section === 'instructor') {
+        newStatus = 'pending advisor approval';
+        successMessage = 'Enrollment approved! Sent to advisor for approval.';
+      } else {
+        newStatus = 'enrolled';
+        successMessage = 'Enrollment approved! Student is now enrolled.';
+      }
 
       await axiosClient.put(
         `/offering/${enrollment.offering_id}/enrollments/${enrollment.enrollment_id}`,
         { enrol_status: newStatus }
       );
 
-      toast.success("Approved successfully");
+      toast.success(successMessage);
       fetchMyPendingWorks();
     } catch {
       toast.error("Approval failed");
@@ -204,6 +213,7 @@ function MyPendingWorksPage() {
         { enrol_status: newStatus }
       );
 
+
       toast.success("Rejected");
       fetchMyPendingWorks();
     } catch {
@@ -216,6 +226,7 @@ function MyPendingWorksPage() {
   // ✅ BULK APPROVE BASED ON FILTERED DATA
   const handleBulkApprove = async (list, section) => {
     if (list.length === 0 || actionUpdating) return;
+
 
     try {
       setActionUpdating("bulk");
@@ -243,6 +254,20 @@ function MyPendingWorksPage() {
     }
   };
 
+
+  if (!isAuthenticated || user?.role !== 'instructor') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-black text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-500 font-medium">Only instructors can access the pending works dashboard.</p>
+        </div>
+      </div>
+    );
+  }
+
+
   const renderTable = (data, section) => {
     if (data.length === 0) {
       return (
@@ -252,6 +277,7 @@ function MyPendingWorksPage() {
         </div>
       );
     }
+
 
     return (
       <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
@@ -350,6 +376,7 @@ function MyPendingWorksPage() {
           <h1 className="text-2xl font-bold">My Pending Works</h1>
         </div>
 
+
         {/* 🔥 FILTER BAR */}
         <div className="bg-white p-4 rounded-xl shadow-sm flex flex-wrap gap-3 items-center">
           <div className="relative">
@@ -441,5 +468,17 @@ function MyPendingWorksPage() {
     </div>
   );
 }
+
+
+// Simple Placeholder for empty sections
+function EmptyState({ message }) {
+  return (
+    <div className="bg-white border-2 border-dashed border-gray-200 rounded-xl p-10 text-center">
+      <Check className="w-10 h-10 text-green-400 mx-auto mb-2 opacity-50" />
+      <p className="text-gray-400 font-bold text-xs uppercase tracking-tight">{message}</p>
+    </div>
+  );
+}
+
 
 export default MyPendingWorksPage;

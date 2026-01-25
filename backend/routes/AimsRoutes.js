@@ -18,6 +18,7 @@ import {
   createEnrollment,
   updateEnrollment,
   // createOffering,
+  getAllowedEnrolTypes,
   loginUser,
   getEnrolledCourses,
   getStudentCredits,
@@ -46,7 +47,8 @@ import {
   createOfferingWithInstructors,
   getAllInstructors,
   getCourseOfferingInstructors,
-  bulkApproveEnrollments
+  bulkApproveEnrollments,
+  uploadGrades
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -182,6 +184,7 @@ router.get('/courses/all', requireAuth, getAllCourses);
 // Enrollment endpoints - any authenticated user can enroll/update their enrollment
 router.post('/offering/:offeringId/enroll', requireAuth, createEnrollment);
 router.put('/offering/:offeringId/enroll', requireAuth, updateEnrollment);
+router.get('/offering/:offeringId/allowed-enrol-types', requireAuth, getAllowedEnrolTypes);
 
 // Student withdrawal and drop endpoints
 router.post('/offering/:offeringId/withdraw', requireAuth, withdrawCourse);
@@ -255,5 +258,36 @@ router.post('/admin/fix-password/:email/:plainPassword', requireRole('admin'), a
 router.get('/alerts', getAlerts); // Public read
 router.post('/alerts', requireAuth, requireRole('admin'), createAlert); // Admin create
 router.delete('/alerts/:id', requireAuth, requireRole('admin'), deleteAlert); // Admin delete
+
+// --- GRADE UPLOAD ROUTES ---
+// Test endpoint to verify session state without uploading
+router.get('/offering/:offeringId/upload-test', (req, res) => {
+  console.log('[UPLOAD-TEST] Session state check');
+  console.log('  - sessionID:', req.sessionID);
+  console.log('  - has session:', !!req.session);
+  console.log('  - has user:', !!req.session?.user);
+  console.log('  - user email:', req.session?.user?.email);
+  
+  if (!req.session?.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authenticated',
+      sessionID: req.sessionID,
+      hasSession: !!req.session,
+      hasUser: !!req.session?.user
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'Session is valid',
+    sessionID: req.sessionID,
+    userEmail: req.session.user.email,
+    userRole: req.session.user.role
+  });
+});
+
+// Actual grade upload endpoint
+router.post('/offering/:offeringId/upload-grades', uploadGrades);
 
 export default router;

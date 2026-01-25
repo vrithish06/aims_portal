@@ -619,6 +619,33 @@ export const createEnrollment = async (req, res) => {
       });
     }
 
+    // ✅ Enrolment type validation via DB rule (targets JSONB vs student batch/branch/degree)
+    // Requires Postgres function: public.get_allowed_enrol_types(p_student_id int, p_offering_id int) returns text[]
+    const { data: allowedTypes, error: allowedError } = await supabase.rpc(
+      "get_allowed_enrol_types",
+      {
+        p_student_id: studentData.student_id,
+        p_offering_id: parseInt(offeringId)
+      }
+    );
+
+    if (allowedError) throw allowedError;
+
+    if (!Array.isArray(allowedTypes) || allowedTypes.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Could not compute allowed enrollment types"
+      });
+    }
+
+    if (!allowedTypes.includes(enrol_type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Enrollment type not allowed. Allowed types: ${allowedTypes.join(", ")}`,
+        allowed_enrol_types: allowedTypes
+      });
+    }
+
     const { data, error } = await supabase
       .from("course_enrollment")
       .insert({
@@ -641,6 +668,55 @@ export const createEnrollment = async (req, res) => {
   } catch (err) {
     console.error("createEnrollment error:", err);
 
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get allowed enrollment types for the currently logged-in student and an offering
+export const getAllowedEnrolTypes = async (req, res) => {
+  const offeringId = req.params.offeringId;
+  const userId = req.user?.user_id;
+
+  try {
+    if (req.user?.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Only students can request allowed enrollment types"
+      });
+    }
+
+    const { data: studentData, error: studentError } = await supabase
+      .from("student")
+      .select("student_id")
+      .eq("user_id", parseInt(userId))
+      .single();
+
+    if (studentError || !studentData) {
+      return res.status(404).json({
+        success: false,
+        message: "Student record not found"
+      });
+    }
+
+    const { data: allowedTypes, error: allowedError } = await supabase.rpc(
+      "get_allowed_enrol_types",
+      {
+        p_student_id: studentData.student_id,
+        p_offering_id: parseInt(offeringId)
+      }
+    );
+
+    if (allowedError) throw allowedError;
+
+    return res.status(200).json({
+      success: true,
+      data: allowedTypes || []
+    });
+  } catch (err) {
+    console.error("[ALLOWED-ENROL-TYPES] Error:", err);
     return res.status(500).json({
       success: false,
       message: err.message
@@ -2841,6 +2917,161 @@ export const getMyPendingWorks = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: err.message
+    });
+  }
+};
+
+// Upload grades from Excel file
+export const uploadGrades = async (req, res) => {
+  try {
+    // Check authentication
+    if (!req.session || !req.session.user) {
+      console.log("[UPLOAD-GRADES] Unauthorized: No user in session");
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Check if user is instructor or admin
+    const userRole = req.session.user.role;
+    if (userRole !== 'instructor' && userRole !== 'admin') {
+      console.log(`[UPLOAD-GRADES] Forbidden: User role is ${userRole}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Instructor or admin access required'
+      });
+    }
+
+    console.log(`[UPLOAD-GRADES] Request from ${req.session.user.email} (${userRole})`);
+
+    const { offeringId } = req.params;
+    const { grades } = req.body;
+
+    if (!offeringId || !grades || !Array.isArray(grades)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request: offeringId and grades array required'
+      });
+    }
+
+    console.log(`[UPLOAD-GRADES] Processing ${grades.length} grade records for offering ${offeringId}`);
+
+    // Validate and process each grade entry
+    const gradeUpdates = [];
+    const errors = [];
+
+    for (let i = 0; i < grades.length; i++) {
+      const gradeEntry = grades[i];
+      const { student_email, grade } = gradeEntry;
+
+      // Validate grade entry
+      if (!student_email || !grade) {
+        errors.push(`Row ${i + 1}: Missing student email or grade`);
+        continue;
+      }
+
+      gradeUpdates.push({
+        student_email: student_email.trim().toLowerCase(),
+        grade: grade.trim(),
+        rowIndex: i + 1
+      });
+    }
+
+    if (gradeUpdates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid grades to process',
+        errors
+      });
+    }
+
+    console.log(`[UPLOAD-GRADES] Validation passed, processing ${gradeUpdates.length} valid records`);
+
+    // Get all students enrolled in this offering with their emails
+    const { data: enrolledStudents, error: enrollError } = await supabase
+      .from('course_enrollment')
+      .select(`
+        enrollment_id,
+        student_id,
+        offering_id,
+        student:student_id (
+          student_id,
+          user_id,
+          users:user_id (
+            id,
+            email
+          )
+        )
+      `)
+      .eq('offering_id', parseInt(offeringId));
+
+    if (enrollError) {
+      console.error("[UPLOAD-GRADES] Error fetching enrollments:", enrollError);
+      throw enrollError;
+    }
+
+    console.log(`[UPLOAD-GRADES] Found ${enrolledStudents?.length || 0} enrolled students`);
+
+    // Create email -> student_id mapping
+    const studentMap = {};
+    enrolledStudents?.forEach(enrollment => {
+      if (enrollment.student?.users?.email) {
+        const email = enrollment.student.users.email.toLowerCase().trim();
+        studentMap[email] = {
+          student_id: enrollment.student.student_id,
+          enrollment_id: enrollment.enrollment_id
+        };
+        console.log(`[UPLOAD-GRADES] Mapped ${email} -> student_id ${enrollment.student.student_id}`);
+      }
+    });
+
+    console.log(`[UPLOAD-GRADES] Student map created with ${Object.keys(studentMap).length} entries`);
+
+    // Update grades in course_enrollment table
+    let updatedCount = 0;
+    const updateErrors = [];
+
+    for (const gradeUpdate of gradeUpdates) {
+      const studentInfo = studentMap[gradeUpdate.student_email];
+
+      if (!studentInfo) {
+        console.log(`[UPLOAD-GRADES] Student not found for email: ${gradeUpdate.student_email}`);
+        updateErrors.push(`Row ${gradeUpdate.rowIndex}: Student with email ${gradeUpdate.student_email} not found or not enrolled in this course`);
+        continue;
+      }
+
+      console.log(`[UPLOAD-GRADES] Updating grade for student ${gradeUpdate.student_email}: ${gradeUpdate.grade}`);
+
+      // Update grade in course_enrollment
+      const { error: updateError } = await supabase
+        .from('course_enrollment')
+        .update({ grade: gradeUpdate.grade })
+        .eq('enrollment_id', studentInfo.enrollment_id);
+
+      if (updateError) {
+        console.error(`[UPLOAD-GRADES] Update failed for ${gradeUpdate.student_email}:`, updateError);
+        updateErrors.push(`Row ${gradeUpdate.rowIndex}: Failed to update grade - ${updateError.message}`);
+      } else {
+        updatedCount++;
+        console.log(`[UPLOAD-GRADES] ✓ Updated grade for ${gradeUpdate.student_email}`);
+      }
+    }
+
+    console.log(`[UPLOAD-GRADES] Completed: ${updatedCount} updated, ${updateErrors.length} errors`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Grades updated for ${updatedCount} student(s)`,
+      updatedCount,
+      errors: updateErrors.length > 0 ? updateErrors : undefined
+    });
+
+  } catch (err) {
+    console.error("[UPLOAD-GRADES] Fatal error:", err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to upload grades: ' + err.message
     });
   }
 };

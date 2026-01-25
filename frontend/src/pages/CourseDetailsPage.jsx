@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import useAuthStore from "../store/authStore";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 import {
   Users,
   ArrowLeft,
@@ -16,6 +17,8 @@ import {
   BookOpen,
   X,
   PieChart,
+  Download,
+  Upload,
 } from "lucide-react";
 
 /* ================= FILTER DROPDOWN ================= */
@@ -97,6 +100,10 @@ function CourseDetailsPage() {
 
   // Approval states
   const [approveAllLoading, setApproveAllLoading] = useState(false);
+
+  // Excel upload/download states
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const user = useAuthStore((state) => state.user);
   const isTeacherOrAdmin = user?.role === "instructor" || user?.role === "admin";
@@ -249,6 +256,188 @@ function CourseDetailsPage() {
       }
     } catch (err) {
       toast.error("Failed to update status");
+    }
+  };
+
+  // Download enrolled students as Excel (only students with enrolled status)
+  const handleDownloadExcel = () => {
+    try {
+      // Filter only students with "enrolled" status
+      const enrolledOnlyStudents = enrolledStudents.filter((s) => s.enrol_status === "enrolled");
+
+      if (enrolledOnlyStudents.length === 0) {
+        toast.error("No enrolled students to download");
+        return;
+      }
+
+      // Prepare data for Excel
+      const data = enrolledOnlyStudents.map((s) => ({
+        "Student Name": s.student_name,
+        "Student Email": s.student_email,
+        "Enrollment Type": s.enrol_type,
+      }));
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Enrollments");
+
+      // Set column widths
+      worksheet["!cols"] = [
+        { wch: 25 },
+        { wch: 30 },
+        { wch: 25 },
+      ];
+
+      // Download file
+      XLSX.writeFile(
+        workbook,
+        `${course?.code || "Course"}_Enrollments_${offering.acad_session || "Session"}.xlsx`
+      );
+
+      toast.success(`Excel file downloaded (${enrolledOnlyStudents.length} enrolled student(s))`);
+    } catch (err) {
+      toast.error("Failed to download Excel");
+    }
+  };
+
+  // Handle Excel file upload
+  const handleUploadExcel = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadLoading(true);
+      
+      // First, test if session is valid
+      console.log("[UPLOAD] Testing session state before upload...");
+      try {
+        const testResponse = await axiosClient.get(`/offering/${offeringId}/upload-test`);
+        console.log("[UPLOAD] Session test passed:", testResponse.data);
+      } catch (testErr) {
+        console.error("[UPLOAD] Session test FAILED:", {
+          status: testErr.response?.status,
+          message: testErr.response?.data?.message
+        });
+        toast.error("Session invalid. Please refresh the page and try again.");
+        setUploadLoading(false);
+        return;
+      }
+      
+      // Read Excel file
+      const reader = new FileReader();
+      reader.onerror = () => {
+        toast.error("Failed to read file");
+        setUploadLoading(false);
+      };
+
+      reader.onload = async (event) => {
+        try {
+          const binaryStr = event.target?.result;
+          console.log("[UPLOAD] File read successfully, size:", binaryStr?.length);
+
+          const workbook = XLSX.read(binaryStr, { type: "binary" });
+          console.log("[UPLOAD] Workbook parsed, sheets:", workbook.SheetNames);
+
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+          console.log("[UPLOAD] Data parsed, rows:", jsonData.length);
+          console.log("[UPLOAD] First row:", jsonData[0]);
+
+          // Validate data format
+          if (!jsonData || jsonData.length === 0) {
+            toast.error("Excel file is empty");
+            setUploadLoading(false);
+            return;
+          }
+
+          const requiredColumns = ["Student Name", "Student Email", "Enrollment Type", "Grade"];
+          const firstRow = jsonData[0];
+          const missingColumns = requiredColumns.filter((col) => !(col in firstRow));
+
+          if (missingColumns.length > 0) {
+            toast.error(`Missing columns: ${missingColumns.join(", ")}`);
+            setUploadLoading(false);
+            return;
+          }
+
+          console.log("[UPLOAD] Validation passed, all columns present");
+
+          // Process and upload grades
+          const gradesData = jsonData.map((row) => ({
+            student_name: row["Student Name"],
+            student_email: row["Student Email"],
+            enrol_type: row["Enrollment Type"],
+            grade: String(row["Grade"]).trim(),
+          }));
+
+          console.log("[UPLOAD] Sending grades data to backend:", {
+            offeringId,
+            count: gradesData.length,
+            sample: gradesData[0]
+          });
+
+          // Send to backend
+          try {
+            console.log("[UPLOAD] Making axios POST request...");
+            const response = await axiosClient.post(
+              `/offering/${offeringId}/upload-grades`,
+              { grades: gradesData }
+            );
+
+            console.log("[UPLOAD] Response received:", response.status, response.data);
+
+            if (response.data.success) {
+              toast.success(`✓ Grades updated for ${response.data.updatedCount} student(s)`);
+              
+              // Show errors if any
+              if (response.data.errors && response.data.errors.length > 0) {
+                console.warn("[UPLOAD] Errors during update:", response.data.errors);
+                toast.error(`⚠ ${response.data.errors.length} student(s) failed: ${response.data.errors[0]}`);
+              }
+
+              // Refresh the list
+              await fetchEnrolledStudents();
+            } else {
+              console.error("[UPLOAD] API returned failure:", response.data);
+              toast.error(response.data.message || "Failed to update grades");
+            }
+          } catch (axiosErr) {
+            console.error("[UPLOAD] Axios error details:", {
+              status: axiosErr.response?.status,
+              message: axiosErr.response?.data?.message || axiosErr.message,
+              fullResponse: axiosErr.response?.data,
+              config: {
+                method: axiosErr.config?.method,
+                url: axiosErr.config?.url,
+                headers: axiosErr.config?.headers
+              }
+            });
+            
+            if (axiosErr.response?.status === 401) {
+              toast.error("Authentication failed. Please refresh and try again.");
+            } else {
+              toast.error(`Error: ${axiosErr.response?.data?.message || axiosErr.message}`);
+            }
+            throw axiosErr;
+          }
+        } catch (parseErr) {
+          console.error("[UPLOAD] Error:", parseErr);
+          toast.error(`Error: ${parseErr.message || "Failed to parse Excel file"}`);
+        } finally {
+          setUploadLoading(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }
+      };
+
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      console.error("[UPLOAD] Outer error:", err);
+      toast.error("Failed to process file");
+      setUploadLoading(false);
     }
   };
 
@@ -576,6 +765,43 @@ function CourseDetailsPage() {
                     `Approve ${filteredStudents.length}`
                   )}
                 </button>
+              )}
+
+              {isTeacherOrAdmin && filteredStudents.length > 0 && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDownloadExcel}
+                    className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                    title="Download enrolled students as Excel"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </button>
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadLoading}
+                    className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                    title="Upload grades from Excel"
+                  >
+                    {uploadLoading ? (
+                      <span className="loading loading-spinner loading-sm"></span>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Upload Grades
+                      </>
+                    )}
+                  </button>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleUploadExcel}
+                    className="hidden"
+                  />
+                </div>
               )}
             </div>
 
