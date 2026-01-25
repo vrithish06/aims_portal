@@ -222,6 +222,32 @@ function CourseDetailsPage() {
     }
   };
 
+  const handleBulkRejectFiltered = async () => {
+    const pending = filteredStudents.filter((s) => s.enrol_status === "pending instructor approval");
+    if (pending.length === 0) {
+      toast.error("No pending students to reject in current view");
+      return;
+    }
+
+    if (!window.confirm(`Reject ${pending.length} pending student(s)?`)) return;
+
+    try {
+      setApproveAllLoading(true);
+      const promises = pending.map((s) =>
+        axiosClient.put(`/offering/${offeringId}/enrollments/${s.enrollment_id}`, {
+          enrol_status: "instructor rejected",
+        })
+      );
+      await Promise.all(promises);
+      toast.success(`Rejected ${pending.length} student(s)`);
+      fetchEnrolledStudents();
+    } catch (err) {
+      toast.error("Bulk rejection failed");
+    } finally {
+      setApproveAllLoading(false);
+    }
+  };
+
   const handleApproveStudent = async (enrollment) => {
     try {
       await axiosClient.put(`/offering/${offeringId}/enrollments/${enrollment.enrollment_id}`, {
@@ -754,21 +780,35 @@ function CourseDetailsPage() {
               </div>
 
               {isTeacherOrAdmin && filteredStudents.length > 0 && (
-                <button
-                  onClick={handleBulkApproveFiltered}
-                  disabled={approveAllLoading || !filteredStudents.some(s => s.enrol_status === "pending instructor approval")}
-                  className="btn btn-primary btn-sm ml-auto"
-                >
-                  {approveAllLoading ? (
-                    <span className="loading loading-spinner"></span>
-                  ) : (
-                    `Approve ${filteredStudents.length}`
-                  )}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleBulkApproveFiltered}
+                    disabled={approveAllLoading || !filteredStudents.some(s => s.enrol_status === "pending instructor approval")}
+                    className="btn btn-primary btn-sm"
+                  >
+                    {approveAllLoading ? (
+                      <span className="loading loading-spinner"></span>
+                    ) : (
+                      `Approve ${filteredStudents.filter(s => s.enrol_status === "pending instructor approval").length}`
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleBulkRejectFiltered}
+                    disabled={approveAllLoading || !filteredStudents.some(s => s.enrol_status === "pending instructor approval")}
+                    className="btn btn-error btn-sm"
+                  >
+                    {approveAllLoading ? (
+                      <span className="loading loading-spinner"></span>
+                    ) : (
+                      `Reject ${filteredStudents.filter(s => s.enrol_status === "pending instructor approval").length}`
+                    )}
+                  </button>
+                </div>
               )}
 
               {isTeacherOrAdmin && filteredStudents.length > 0 && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 ml-auto">
                   <button
                     onClick={handleDownloadExcel}
                     className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"

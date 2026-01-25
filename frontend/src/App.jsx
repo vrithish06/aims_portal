@@ -15,10 +15,12 @@ import AddUserPage from "./pages/AddUserPage";
 import ActionPendingPage from "./pages/ActionPendingPage";
 import AddAdvisorPage from "./pages/AddAdvisorPage";
 import AllAdvisorsPage from "./pages/AllAdvisorsPage";
+import MyAdviseesPage from "./pages/MyAdviseesPage";
 import AdvisorActionsPage from "./pages/AdvisorActionsPage";
 import FacultyAdviseesPage from "./pages/FacultyAdviseesPage";
 import AdminAlertsPage from "./pages/AdminAlertsPage";
 import AlertsPage from "./pages/AlertsPage";
+import CurrentSessionDetailsPage from "./pages/CurrentSessionDetailsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
 import useAuthStore from "./store/authStore";
@@ -61,11 +63,13 @@ function App() {
         <Route path="/my-pending-works" element={<ProtectedRoute><MyPendingWorksPage /></ProtectedRoute>} />
         <Route path="/add-advisor" element={<ProtectedRoute><AddAdvisorPage /></ProtectedRoute>} />
         <Route path="/all-advisors" element={<ProtectedRoute><AllAdvisorsPage /></ProtectedRoute>} />
+        <Route path="/myadvisees" element={<ProtectedRoute><MyAdviseesPage /></ProtectedRoute>} />
         <Route path="/advisor-actions/:studentId" element={<ProtectedRoute><AdvisorActionsPage /></ProtectedRoute>} />
         <Route path="/faculty-advisees" element={<ProtectedRoute><FacultyAdviseesPage /></ProtectedRoute>} />
         <Route path="/admin-alerts" element={<ProtectedRoute><AdminAlertsPage /></ProtectedRoute>} />
         <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
         <Route path="/add-user" element={<ProtectedRoute><AddUserPage /></ProtectedRoute>} />
+        <Route path="/current-session-details" element={<ProtectedRoute><CurrentSessionDetailsPage /></ProtectedRoute>} />
         <Route path="/product/:id" element={<ProductPage />} />
         <Route path="/faculty-advisees/:studentId" element={<StudentAdvisorDetailPage />} />
       </Routes>

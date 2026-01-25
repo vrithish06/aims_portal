@@ -97,6 +97,11 @@ function Navbar() {
                         My Pending Works
                       </NavLink>
                     </li>
+                    <li>
+                      <NavLink to="/myadvisees" className={navClass}>
+                        My Advisees
+                      </NavLink>
+                    </li>
                   </ul>
                 </div>
 
@@ -115,6 +120,10 @@ function Navbar() {
               <>
                 <NavLink to="/course-offerings" className={navClass}>
                   Browse Courses
+                </NavLink>
+
+                <NavLink to="/current-session-details" className={navClass}>
+                  Current Session Details
                 </NavLink>
 
                 <NavLink to="/add-user" className={navClass}>
@@ -229,6 +238,9 @@ function Navbar() {
                         <Link to="/my-pending-works">My Pending Works</Link>
                       </li>
                       <li>
+                        <Link to="/myadvisees">My Advisees</Link>
+                      </li>
+                      <li>
                         <Link to="/course-offerings">Browse Courses</Link>
                       </li>
                       <li>
@@ -241,6 +253,9 @@ function Navbar() {
                     <>
                       <li>
                         <Link to="/course-offerings">Browse Courses</Link>
+                      </li>
+                      <li>
+                        <Link to="/current-session-details">Current Session Details</Link>
                       </li>
                       <li>
                         <Link to="/add-user">Add User</Link>
@@ -335,6 +350,14 @@ function Navbar() {
               </Link>
 
               <Link
+                to="/myadvisees"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                My Advisees
+              </Link>
+
+              <Link
                 to="/course-offerings"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
@@ -360,6 +383,14 @@ function Navbar() {
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
                 Browse Courses
+              </Link>
+
+              <Link
+                to="/current-session-details"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+              >
+                Current Session Details
               </Link>
 
               <Link

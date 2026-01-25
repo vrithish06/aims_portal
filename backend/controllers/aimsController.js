@@ -3072,3 +3072,286 @@ export const uploadGrades = async (req, res) => {
   }
 };
 
+// Get all unique academic sessions
+export const getAllSessions = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("course_offering")
+      .select("acad_session")
+      .eq("is_deleted", false)
+      .order("acad_session", { ascending: false });
+
+    if (error) throw error;
+
+    // Get unique sessions
+    const uniqueSessions = [...new Set(data.map(d => d.acad_session))];
+
+    return res.status(200).json({
+      success: true,
+      data: uniqueSessions
+    });
+  } catch (err) {
+    console.error("[GET-SESSIONS] Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Get course offerings for a specific session
+export const getOfferingsBySession = async (req, res) => {
+  const { session } = req.params;
+
+  if (!session) {
+    return res.status(400).json({
+      success: false,
+      message: "Session parameter is required"
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("course_offering")
+      .select(`
+        offering_id,
+        course_id,
+        acad_session,
+        status,
+        slot,
+        section,
+        course:course_id (
+          code,
+          title,
+          ltp
+        ),
+        enrollments:course_enrollment(enrollment_id)
+      `)
+      .eq("acad_session", session)
+      .eq("is_deleted", false)
+      .order("offering_id", { ascending: true });
+
+    if (error) throw error;
+
+    // Enrich with enrollment count
+    const enrichedData = data.map(offering => ({
+      ...offering,
+      _count: {
+        enrollments: offering.enrollments?.length || 0
+      }
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: enrichedData || []
+    });
+  } catch (err) {
+    console.error("[GET-OFFERINGS-BY-SESSION] Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Bulk update offering status for multiple offerings
+export const bulkUpdateOfferingStatus = async (req, res) => {
+  const { offering_ids, new_status } = req.body;
+
+  if (!offering_ids || !Array.isArray(offering_ids) || offering_ids.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "offering_ids must be a non-empty array"
+    });
+  }
+
+  if (!new_status) {
+    return res.status(400).json({
+      success: false,
+      message: "new_status is required"
+    });
+  }
+
+  const validStatuses = ["Enrolling", "Running", "Completed", "Canceled", "Declined"];
+  if (!validStatuses.includes(new_status)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid status. Allowed values: ${validStatuses.join(", ")}`
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("course_offering")
+      .update({ status: new_status })
+      .in("offering_id", offering_ids)
+      .select();
+
+    if (error) throw error;
+
+    console.log(`[BULK-UPDATE-STATUS] Updated ${data?.length || 0} offerings to ${new_status}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully updated ${data?.length || 0} course offering(s) to ${new_status}`,
+      updated_count: data?.length || 0
+    });
+  } catch (err) {
+    console.error("[BULK-UPDATE-STATUS] Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Calculate CGPA for a session using PostgreSQL function
+export const calculateCGPAForSession = async (req, res) => {
+  const { session } = req.body;
+
+  if (!session) {
+    return res.status(400).json({
+      success: false,
+      message: "session parameter is required"
+    });
+  }
+
+  try {
+    // Call the PostgreSQL function to calculate CGPA
+    // Function name: cgpa_calculator, Parameter: p_session
+    const { data, error } = await supabase.rpc(
+      'cgpa_calculator',
+      { p_session: session }
+    );
+
+    if (error) {
+      console.error("[CALCULATE-CGPA] RPC Error:", error.message);
+      throw error;
+    }
+
+    console.log(`[CALCULATE-CGPA] ✅ CGPA calculated for session ${session}`);
+
+    // Since the function doesn't return a count, we'll provide a generic success message
+    return res.status(200).json({
+      success: true,
+      message: `CGPA calculated successfully for session ${session}`,
+      data: {
+        session: session,
+        status: "completed"
+      }
+    });
+  } catch (err) {
+    console.error("[CALCULATE-CGPA] Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+// Download grade sheets for multiple offerings (as Excel)
+export const downloadGradeSheets = async (req, res) => {
+  const { offering_ids } = req.body;
+
+  if (!offering_ids || !Array.isArray(offering_ids) || offering_ids.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "offering_ids must be a non-empty array"
+    });
+  }
+
+  try {
+    // Fetch enrollments and grades for all offerings
+    const { data: enrollments, error: enrollmentError } = await supabase
+      .from("course_enrollment")
+      .select(`
+        enrollment_id,
+        student_id,
+        offering_id,
+        enrol_type,
+        enrol_status,
+        grade,
+        student:student_id(
+          student_id,
+          user_id,
+          users:user_id(
+            email,
+            first_name,
+            last_name
+          )
+        ),
+        offering:offering_id(
+          offering_id,
+          acad_session,
+          status,
+          course:course_id(
+            code,
+            title
+          ),
+          course_offering_instructor(
+            is_coordinator,
+            instructor:instructor_id(
+              users:user_id(
+                first_name,
+                last_name
+              )
+            )
+          )
+        )
+      `)
+      .in("offering_id", offering_ids)
+      .eq("is_deleted", false);
+
+    if (enrollmentError) throw enrollmentError;
+
+    if (!enrollments || enrollments.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No enrollments found for the selected offerings",
+        data: []
+      });
+    }
+
+    // Organize data by offering
+    const gradeSheetsByOffering = {};
+
+    enrollments.forEach(enrollment => {
+      const offeringId = enrollment.offering_id;
+      const courseCode = enrollment.offering.course?.code || "N/A";
+      const courseTitle = enrollment.offering.course?.title || "N/A";
+
+      if (!gradeSheetsByOffering[offeringId]) {
+        gradeSheetsByOffering[offeringId] = {
+          course_code: courseCode,
+          course_title: courseTitle,
+          session: enrollment.offering.acad_session,
+          enrollments: []
+        };
+      }
+
+      gradeSheetsByOffering[offeringId].enrollments.push({
+        student_id: enrollment.student.student_id,
+        student_email: enrollment.student.users.email,
+        student_name: `${enrollment.student.users.first_name} ${enrollment.student.users.last_name}`,
+        enrol_type: enrollment.enrol_type,
+        enrol_status: enrollment.enrol_status,
+        grade: enrollment.grade || "-"
+      });
+    });
+
+    // Since we can't use Excel library without npm install, we'll return JSON data
+    // The frontend can use this to generate Excel using a library like xlsx
+    return res.status(200).json({
+      success: true,
+      message: `Grade sheets prepared for ${offering_ids.length} offering(s)`,
+      data: gradeSheetsByOffering,
+      total_enrollments: enrollments.length
+    });
+  } catch (err) {
+    console.error("[DOWNLOAD-GRADE-SHEETS] Error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
