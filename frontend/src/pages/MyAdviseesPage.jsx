@@ -26,7 +26,7 @@ export default function MyAdviseesPage() {
       setLoading(true);
       // Fetch advisees using the dedicated endpoint that handles advisor logic
       const response = await axiosClient.get('/enrollment/advisees');
-      
+
       console.log("Advisees response:", response.data);
       setAdvisees(response.data.data || []);
     } catch (err) {
@@ -40,7 +40,7 @@ export default function MyAdviseesPage() {
 
   const viewStudentEnrollments = async (student) => {
     setSelectedStudent(student);
-    
+
     // The enrollments are already included in the student data from the API
     // Just extract them from the student object
     if (student.enrollments && student.enrollments.length > 0) {
@@ -231,13 +231,12 @@ export default function MyAdviseesPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span
-                              className={`px-2 py-1 rounded text-xs font-medium ${
-                                enrollment.enrol_status === "enrolled"
+                              className={`px-2 py-1 rounded text-xs font-medium ${enrollment.enrol_status === "enrolled"
                                   ? "bg-green-100 text-green-800"
                                   : enrollment.enrol_status === "pending advisor approval"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
                             >
                               {enrollment.enrol_status || "N/A"}
                             </span>

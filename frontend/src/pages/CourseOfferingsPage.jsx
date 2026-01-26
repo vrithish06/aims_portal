@@ -4,7 +4,6 @@ import axiosClient from '../api/axiosClient';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
 import {
-  Zap,
   ChevronDown,
   Search,
   X,
@@ -364,17 +363,6 @@ function CourseOfferingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-4xl font-bold mb-2 flex items-center gap-2 text-gray-900">
-          <Zap className="w-8 h-8 text-blue-600" />
-          Offered Courses
-        </h1>
-        <p className="text-lg text-gray-600">
-          Total offerings: {offerings.length}
-        </p>
-      </div>
-
       {/* Search Bar & Filters */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">

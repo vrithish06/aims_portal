@@ -68,7 +68,7 @@ function Navbar() {
                 </NavLink>
 
                 <NavLink to="/course-offerings" className={navClass}>
-                  Browse Courses
+                  Course Offerings
                 </NavLink>
 
                 <NavLink to="/student-record" className={navClass}>
@@ -106,7 +106,7 @@ function Navbar() {
                 </div>
 
                 <NavLink to="/course-offerings" className={navClass}>
-                  Browse Courses
+                  Course Offerings
                 </NavLink>
 
                 <NavLink to="/add-offering" className={navClass}>
@@ -119,11 +119,11 @@ function Navbar() {
             {user?.role === "admin" && (
               <>
                 <NavLink to="/course-offerings" className={navClass}>
-                  Browse Courses
+                  Course Offerings
                 </NavLink>
 
                 <NavLink to="/current-session-details" className={navClass}>
-                  Current Session Details
+                  Session Details
                 </NavLink>
 
                 <NavLink to="/add-user" className={navClass}>
@@ -131,15 +131,11 @@ function Navbar() {
                 </NavLink>
 
                 <NavLink to="/admin-alerts" className={navClass}>
-                  Add Alert
+                  Add Announcement
                 </NavLink>
 
                 <NavLink to="/course-add" className={navClass}>
                   Add Course
-                </NavLink>
-
-                <NavLink to="/add-advisor" className={navClass}>
-                  Add Advisor
                 </NavLink>
 
                 <NavLink to="/all-advisors" className={navClass}>
@@ -149,7 +145,7 @@ function Navbar() {
             )}
 
             <NavLink to="/alerts" className={navClass}>
-              Alerts
+              Announcements
             </NavLink>
           </div>
         )}
@@ -158,9 +154,26 @@ function Navbar() {
         <div className="flex-1"></div>
 
         {/* Right side actions */}
-        <div className="flex-none gap-2 sm:gap-3 pl-2 sm:pl-4">
+        <div className="flex-none flex items-center gap-2 sm:gap-4 pl-2 sm:pl-4">
           {isAuthenticated && user ? (
             <>
+              {/* User Info Display */}
+              <div className="hidden lg:flex flex-col items-end leading-tight mr-1">
+                <span className="text-sm font-bold text-gray-900">
+                  {user?.first_name} {user?.last_name}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                    {user?.role}
+                  </span>
+                  {user?.is_advisor && (
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                      Advisor
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <button
                 className="hidden md:flex btn btn-ghost btn-circle hover:bg-red-50 text-gray-500 hover:text-red-600"
                 onClick={handleLogout}
@@ -221,7 +234,7 @@ function Navbar() {
                         <Link to="/enrolled-courses">My Courses</Link>
                       </li>
                       <li>
-                        <Link to="/course-offerings">Browse Courses</Link>
+                        <Link to="/course-offerings">Course Offerings</Link>
                       </li>
                       <li>
                         <Link to="/student-record">Student Record</Link>
@@ -241,7 +254,7 @@ function Navbar() {
                         <Link to="/myadvisees">My Advisees</Link>
                       </li>
                       <li>
-                        <Link to="/course-offerings">Browse Courses</Link>
+                        <Link to="/course-offerings">Course Offerings</Link>
                       </li>
                       <li>
                         <Link to="/add-offering">Offer a Course</Link>
@@ -252,22 +265,19 @@ function Navbar() {
                   {user?.role === "admin" && (
                     <>
                       <li>
-                        <Link to="/course-offerings">Browse Courses</Link>
+                        <Link to="/course-offerings">Course Offerings</Link>
                       </li>
                       <li>
-                        <Link to="/current-session-details">Current Session Details</Link>
+                        <Link to="/current-session-details">Session Details</Link>
                       </li>
                       <li>
                         <Link to="/add-user">Add User</Link>
                       </li>
                       <li>
-                        <Link to="/admin-alerts">Add Alert</Link>
+                        <Link to="/admin-alerts">Add Announcement</Link>
                       </li>
                       <li>
                         <Link to="/course-add">Add Course</Link>
-                      </li>
-                      <li>
-                        <Link to="/add-advisor">Add Advisor</Link>
                       </li>
                       <li>
                         <Link to="/all-advisors">All Advisors</Link>
@@ -276,7 +286,7 @@ function Navbar() {
                   )}
 
                   <li>
-                    <Link to="/alerts">Alerts</Link>
+                    <Link to="/alerts">Announcements</Link>
                   </li>
 
                   <li>
@@ -295,6 +305,28 @@ function Navbar() {
       {/* Mobile Menu */}
       {isAuthenticated && mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-200 p-4 space-y-2">
+          {/* Mobile User Profile Header */}
+          <div className="flex items-center gap-3 px-4 py-3 mb-2 bg-blue-50/50 rounded-xl border border-blue-100">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold shadow-sm">
+              {user?.first_name?.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-gray-900 leading-none">
+                {user?.first_name} {user?.last_name}
+              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs font-extrabold text-blue-600 uppercase tracking-widest">
+                  {user?.role}
+                </span>
+                {user?.is_advisor && (
+                  <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 leading-none">
+                    Advisor
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}
@@ -318,7 +350,7 @@ function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
-                Browse Courses
+                Course Offerings
               </Link>
 
               <Link
@@ -390,7 +422,7 @@ function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
-                Current Session Details
+                Session Details
               </Link>
 
               <Link
@@ -406,7 +438,7 @@ function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
               >
-                Add Alert
+                Add Announcement
               </Link>
 
               <Link
@@ -417,13 +449,6 @@ function Navbar() {
                 Add Course
               </Link>
 
-              <Link
-                to="/add-advisor"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
-              >
-                Add Advisor
-              </Link>
 
               <Link
                 to="/all-advisors"
@@ -440,7 +465,7 @@ function Navbar() {
             onClick={() => setMobileMenuOpen(false)}
             className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
           >
-            Alerts
+            Announcements
           </Link>
 
           <button

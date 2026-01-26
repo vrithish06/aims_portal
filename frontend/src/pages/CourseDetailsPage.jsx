@@ -334,7 +334,7 @@ function CourseDetailsPage() {
 
     try {
       setUploadLoading(true);
-      
+
       // First, test if session is valid
       console.log("[UPLOAD] Testing session state before upload...");
       try {
@@ -349,7 +349,7 @@ function CourseDetailsPage() {
         setUploadLoading(false);
         return;
       }
-      
+
       // Read Excel file
       const reader = new FileReader();
       reader.onerror = () => {
@@ -416,7 +416,7 @@ function CourseDetailsPage() {
 
             if (response.data.success) {
               toast.success(`✓ Grades updated for ${response.data.updatedCount} student(s)`);
-              
+
               // Show errors if any
               if (response.data.errors && response.data.errors.length > 0) {
                 console.warn("[UPLOAD] Errors during update:", response.data.errors);
@@ -440,7 +440,7 @@ function CourseDetailsPage() {
                 headers: axiosErr.config?.headers
               }
             });
-            
+
             if (axiosErr.response?.status === 401) {
               toast.error("Authentication failed. Please refresh and try again.");
             } else {

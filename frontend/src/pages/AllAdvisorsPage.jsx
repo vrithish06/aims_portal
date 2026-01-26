@@ -196,25 +196,14 @@ function AllAdvisorsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-2 text-gray-900">
-            <GraduationCap className="w-8 h-8 text-blue-600" />
-            All Advisors
-          </h1>
-          <p className="text-lg text-gray-600">
-            Manage student advisors and their assignments
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/add-advisor")}
-          className="btn bg-blue-600 hover:bg-blue-700 text-white border-none gap-2 shadow-sm"
-        >
-          <Plus size={20} />
-          Add New Advisor
-        </button>
-      </div>
+      {/* Floating Add New Advisor Button */}
+      <button
+        onClick={() => navigate("/add-advisor")}
+        className="fixed bottom-8 right-8 z-50 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl shadow-2xl hover:scale-105 transition-all active:scale-95 border border-blue-500 font-bold tracking-tight"
+      >
+        <Plus size={24} />
+        <span className="hidden sm:inline">Add New Advisor</span>
+      </button>
 
       {error && (
         <div className="px-6 pt-6">
@@ -275,20 +264,6 @@ function AllAdvisorsPage() {
 
       {/* Main Content */}
       <div className="p-6 max-w-[1600px] mx-auto">
-        {hasActiveFilters() && (
-          <div className="mb-6 flex items-center justify-between bg-blue-50 border border-blue-100 px-4 py-3 rounded-xl">
-            <span className="text-blue-800 font-medium text-sm">
-              {filteredAdvisors.length} advisor{filteredAdvisors.length !== 1 ? 's' : ''} found
-            </span>
-            <button
-              onClick={clearAllFilters}
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-            >
-              <X className="w-4 h-4" />
-              Clear all filters
-            </button>
-          </div>
-        )}
 
         {filteredAdvisors.length === 0 ? (
           <div className="bg-white border border-slate-200 text-slate-500 px-6 py-12 rounded-xl text-center">

@@ -51,8 +51,8 @@ function FilterDropdown({ label, options, selected, setSelected }) {
             >
               <span
                 className={`w-4 h-4 rounded border flex items-center justify-center ${selected.has(opt)
-                    ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'border-gray-300'
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : 'border-gray-300'
                   }`}
               >
                 {selected.has(opt) && <Check className="w-3 h-3" />}
@@ -458,11 +458,10 @@ function MyPendingWorksPage() {
           <div className="flex gap-2 border-b border-gray-200">
             <button
               onClick={() => setActiveTab('instructor')}
-              className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${
-                activeTab === 'instructor'
+              className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'instructor'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <BookOpen className="w-5 h-5" />
               Pending as Instructor ({filteredInstructor.length})
@@ -471,11 +470,10 @@ function MyPendingWorksPage() {
             {isAdvisor && (
               <button
                 onClick={() => setActiveTab('advisor')}
-                className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${
-                  activeTab === 'advisor'
+                className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'advisor'
                     ? 'border-purple-600 text-purple-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 <GraduationCap className="w-5 h-5" />
                 Pending as Advisor ({filteredAdvisor.length})

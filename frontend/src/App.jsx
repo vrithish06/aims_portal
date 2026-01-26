@@ -45,14 +45,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-base-200 transition-colors duration-300">
-      <Navbar />
+      {isAuthenticated && <Navbar />}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/enrolled-courses" element={<ProtectedRoute><EnrolledCoursesPage /></ProtectedRoute>} />
         <Route path="/course-offerings" element={<ProtectedRoute><CourseOfferingsPage /></ProtectedRoute>} />
         <Route path="/student-record" element={<ProtectedRoute><StudentRecordPage /></ProtectedRoute>} />
-        <Route path="/courses/all" element={<ProtectedRoute><CoursesPage/></ProtectedRoute>} />
+        <Route path="/courses/all" element={<ProtectedRoute><CoursesPage /></ProtectedRoute>} />
         <Route path="/course/:offeringId" element={<ProtectedRoute><CourseDetailsPage /></ProtectedRoute>} />
         <Route path="/course-add" element={<ProtectedRoute><CourseAddPage /></ProtectedRoute>} />
         <Route path="/add-offering" element={<ProtectedRoute><AddOfferingPage /></ProtectedRoute>} />

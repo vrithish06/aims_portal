@@ -12,7 +12,6 @@ import {
   GraduationCap,
   LayoutDashboard,
   ArrowRight,
-  UserCircle,
   Megaphone,
   Bell,
 } from "lucide-react";
@@ -79,7 +78,6 @@ function HomePage() {
         desc: "Explore all available courses",
         icon: <Search className="w-7 h-7 text-violet-600" />,
         onClick: () => navigate("/course-offerings"),
-        color: "bg-violet-50 hover:bg-violet-100",
       },
     ];
 
@@ -89,7 +87,6 @@ function HomePage() {
         desc: "View your current enrollments",
         icon: <BookOpen className="w-7 h-7 text-blue-600" />,
         onClick: () => navigate("/enrolled-courses"),
-        color: "bg-blue-50 hover:bg-blue-100",
       });
     }
 
@@ -99,7 +96,6 @@ function HomePage() {
         desc: "Organize and update your courses",
         icon: <LayoutDashboard className="w-7 h-7 text-indigo-600" />,
         onClick: () => navigate("/my-offerings"),
-        color: "bg-indigo-50 hover:bg-indigo-100",
       });
     }
 
@@ -109,7 +105,6 @@ function HomePage() {
         desc: "Publish announcements & notices",
         icon: <Megaphone className="w-7 h-7 text-amber-600" />,
         onClick: () => navigate("/admin-alerts"),
-        color: "bg-amber-50 hover:bg-amber-100",
       });
     }
 
@@ -119,20 +114,6 @@ function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-10 lg:py-12">
-
-        {/* HEADER */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 bg-white px-6 py-3.5 rounded-xl shadow-sm border border-gray-200">
-            <GraduationCap className="w-10 h-10 text-indigo-600" />
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              AIMS Portal
-            </h1>
-          </div>
-          <p className="mt-4 text-lg text-gray-600 font-medium">
-            Academic Information Management System
-          </p>
-        </div>
-
         {isAuthenticated && user ? (
           <div className="space-y-10">
 
@@ -162,17 +143,26 @@ function HomePage() {
             {/* WELCOME CARD */}
             <div className="bg-white border border-gray-200 rounded-2xl p-7 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center">
-                  <UserCircle className="w-8 h-8 text-indigo-600" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-2 border-white">
+                  <span className="font-bold text-2xl text-white">
+                    {user?.first_name?.charAt(0).toUpperCase()}
+                  </span>
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">
                     Welcome back, {user.first_name}
                   </h2>
                   <p className="text-sm text-gray-600">{user.email}</p>
-                  <span className="inline-block mt-2 px-3 py-0.5 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full uppercase">
-                    {user.role}
-                  </span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                      {user.role}
+                    </span>
+                    {user.is_advisor && (
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        Advisor
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -186,14 +176,14 @@ function HomePage() {
             </div>
 
             {/* DASHBOARD GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
               {getDashboardActions().map((action, idx) => (
                 <div
                   key={idx}
                   onClick={action.onClick}
-                  className={`bg-white border border-gray-200 rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition ${action.color}`}
+                  className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300"
                 >
-                  <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5 bg-white">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 bg-gray-50/50 group-hover:scale-110 transition-transform">
                     {action.icon}
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1.5">
@@ -211,13 +201,13 @@ function HomePage() {
               {/* HELP CARD */}
               <div
                 onClick={handleHelp}
-                className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition"
+                className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-14 h-14 bg-teal-50 rounded-xl flex items-center justify-center mb-5">
+                <div className="w-12 h-12 bg-gray-50/50 rounded-xl flex items-center justify-center mb-5">
                   {helpLoading ? (
-                    <div className="loading loading-spinner loading-md text-teal-600"></div>
+                    <div className="loading loading-spinner loading-md text-emerald-600"></div>
                   ) : (
-                    <HelpCircle className="w-7 h-7 text-teal-600" />
+                    <HelpCircle className="w-7 h-7 text-emerald-600" />
                   )}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-1.5">
@@ -226,8 +216,8 @@ function HomePage() {
                 <p className="text-sm text-gray-600 mb-4">
                   Guides, FAQs and assistance
                 </p>
-                <div className="text-teal-600 text-sm font-medium flex items-center gap-1.5">
-                  View Help <ArrowRight className="w-4 h-4" />
+                <div className="text-emerald-600 text-sm font-medium flex items-center gap-1.5 group">
+                  View Help <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             </div>
@@ -248,7 +238,7 @@ function HomePage() {
                 Login to Portal
                 <ArrowRight className="w-5 h-5" />
               </button>
-           </div>
+            </div>
 
           </div>
         )}

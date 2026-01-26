@@ -188,16 +188,7 @@ function AddAdvisorPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2 flex items-center gap-3">
-            <Scale className="w-8 h-8 text-blue-600" />
-            Add New Advisor
-          </h1>
-          <p className="text-slate-500 text-lg">
-            Assign instructors as faculty advisors for specific degrees and batches
-          </p>
-        </div>
+
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">

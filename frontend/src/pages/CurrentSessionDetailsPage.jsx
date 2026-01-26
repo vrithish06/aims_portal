@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import axiosClient from "../api/axiosClient";
-import { Calendar, Download, CheckCircle, AlertCircle, Loader } from "lucide-react";
+import { Download, CheckCircle, AlertCircle, Loader } from "lucide-react";
 import * as XLSX from 'xlsx';
 
 export default function CurrentSessionDetailsPage() {
@@ -207,32 +207,17 @@ export default function CurrentSessionDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <Calendar className="w-8 h-8 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Current Session Details</h1>
-              <p className="text-gray-500 mt-1">Manage course offerings and perform bulk operations</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Session Selection */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-4 mb-8 w-fit border border-gray-100">
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Select Academic Session
           </label>
           <select
             value={selectedSession}
             onChange={handleSessionChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">-- Choose a session --</option>
             {sessions.map((session) => (
@@ -263,31 +248,28 @@ export default function CurrentSessionDetailsPage() {
             <div className="flex gap-4 border-b border-gray-200 mb-6">
               <button
                 onClick={() => setActionTab("bulk-status")}
-                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                  actionTab === "bulk-status"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
+                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${actionTab === "bulk-status"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 Bulk Update Status
               </button>
               <button
                 onClick={() => setActionTab("cgpa")}
-                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                  actionTab === "cgpa"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
+                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${actionTab === "cgpa"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 Calculate CGPA
               </button>
               <button
                 onClick={() => setActionTab("grades")}
-                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                  actionTab === "grades"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
+                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${actionTab === "grades"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 Download Grade Sheets
               </button>
@@ -383,11 +365,10 @@ export default function CurrentSessionDetailsPage() {
                     <button
                       onClick={handleBulkStatusChange}
                       disabled={selectedOfferings.size === 0 || actionLoading}
-                      className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                        selectedOfferings.size === 0 || actionLoading
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-blue-600 text-white hover:bg-blue-700"
-                      }`}
+                      className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${selectedOfferings.size === 0 || actionLoading
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
                     >
                       {actionLoading ? (
                         <span className="flex items-center justify-center gap-2">
@@ -417,11 +398,10 @@ export default function CurrentSessionDetailsPage() {
                   <button
                     onClick={handleCalculateCGPA}
                     disabled={actionLoading}
-                    className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                      actionLoading
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                    }`}
+                    className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${actionLoading
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                      }`}
                   >
                     {actionLoading ? (
                       <>
@@ -515,11 +495,10 @@ export default function CurrentSessionDetailsPage() {
                     <button
                       onClick={handleDownloadGradeSheets}
                       disabled={selectedOfferings.size === 0 || actionLoading}
-                      className={`w-full py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                        selectedOfferings.size === 0 || actionLoading
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-green-600 text-white hover:bg-green-700"
-                      }`}
+                      className={`w-full py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${selectedOfferings.size === 0 || actionLoading
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                        }`}
                     >
                       {actionLoading ? (
                         <>

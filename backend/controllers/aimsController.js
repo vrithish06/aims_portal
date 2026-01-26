@@ -825,13 +825,32 @@ export const loginUser = async (req, res) => {
     /* -----------------------------
        3️⃣ CREATE SESSION (CRITICAL)
     ------------------------------ */
-    req.session.user = {
+    const sessionUser = {
       user_id: user.id,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
       role: user.role,
     };
+
+    // If instructor, check if they are an advisor
+    if (user.role === 'instructor') {
+      try {
+        const { data: instructorData } = await supabase
+          .from("instructor")
+          .select("is_advisor")
+          .eq("user_id", user.id)
+          .single();
+
+        if (instructorData) {
+          sessionUser.is_advisor = instructorData.is_advisor;
+        }
+      } catch (err) {
+        console.error("[LOGIN] Error checking advisor status:", err);
+      }
+    }
+
+    req.session.user = sessionUser;
 
     /* -----------------------------
        4️⃣ FORCE SESSION SAVE
