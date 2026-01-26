@@ -12,11 +12,12 @@ import {
   GraduationCap,
   LayoutDashboard,
   ArrowRight,
+  UserCircle,
   Megaphone,
   Bell,
   Users,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion"; // ✅ FIXED
+import { AnimatePresence, motion } from "framer-motion";
 import LoginPage from "./LoginPage";
 import bgImage from "../assets/image.png";
 
@@ -124,8 +125,23 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-10 lg:py-12">
+    <div className="min-h-screen bg-gray-50 relative overflow-hidden">
+      {/* Background Image - Landing Page */}
+      {!isAuthenticated && (
+        <div
+          className="absolute inset-x-0 bottom-0 h-screen z-0 pointer-events-none"
+          style={{
+            backgroundImage: `url(${bgImage})`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center center",
+            backgroundSize: "cover",
+            opacity: 0.4,
+            mixBlendMode: "multiply"
+          }}
+        />
+      )}
+
+      <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-10 lg:py-12">
         {isAuthenticated && user ? (
           <div className="space-y-10">
 
@@ -235,23 +251,22 @@ function HomePage() {
             </div>
           </div>
         ) : (
-          <div className="max-w-5xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-gray-900">
-              Manage your academic journey with ease
-            </h2>
-            <p className="mt-4 text-gray-600">
-              Access courses, browse offerings, and manage enrollments in one place.
+          <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
+            <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tighter leading-tight drop-shadow-sm">
+              AIMS - IIT ROPAR
+            </h1>
+            <p className="mt-6 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+              Academic journey made ease, in one unified portal.
             </p>
-            <div className="mt-8 w-full flex justify-center">
+            <div className="mt-10">
               <button
                 onClick={() => setShowLogin(true)}
-                className="px-10 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-2 transition-transform hover:scale-105"
+                className="group px-8 py-4 rounded-full bg-slate-900 text-white hover:bg-slate-800 font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center gap-3 transform hover:-translate-y-1"
               >
                 Login to Portal
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
-
           </div>
         )}
       </div>
@@ -266,7 +281,7 @@ function HomePage() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-5xl bg-transparent rounded-3xl overflow-hidden"
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -274,9 +289,10 @@ function HomePage() {
             >
               <button
                 onClick={() => setShowLogin(false)}
-                className="absolute top-4 right-4 p-2 bg-white/80 hover:bg-white rounded-full"
+                className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full z-50 transition-colors"
+                aria-label="Close modal"
               >
-                <X className="w-6 h-6 text-gray-500" />
+                <X className="w-6 h-6 text-gray-600" />
               </button>
 
               <LoginPage insideModal />

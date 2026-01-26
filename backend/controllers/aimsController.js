@@ -365,8 +365,9 @@ export const getAllAdvisors = async (req, res) => {
 };
 
 // Create a new faculty advisor
+// Create a new faculty advisor
 export const createAdvisor = async (req, res) => {
-  const { instructor_id, for_degree, batch } = req.body;
+  const { instructor_id, for_degree, batch, branch } = req.body;
 
   // Validation
   if (!instructor_id || !for_degree || !batch) {
@@ -392,20 +393,39 @@ export const createAdvisor = async (req, res) => {
       });
     }
 
-    // Check if this instructor is already an advisor for this degree/batch
-    const { data: existingAdvisor } = await supabase
+    // Check if ANY advisor is already assigned for this degree/batch/branch target
+    let query = supabase
       .from("faculty_advisor")
-      .select("advisor_id")
-      .eq("instructor_id", instructor_id)
+      .select(`
+        advisor_id,
+        instructor:instructor_id (
+          users:user_id (
+            first_name,
+            last_name
+          )
+        )
+      `)
+      // .eq("instructor_id", instructor_id) // Don't limit to current instructor - check global uniqueness for this target
       .eq("for_degree", for_degree)
       .eq("batch", batch)
-      .eq("is_deleted", false)
-      .single();
+      .eq("is_deleted", false);
+
+    if (branch) {
+      query = query.eq("branch", branch);
+    } else {
+      query = query.is("branch", null);
+    }
+
+    const { data: existingAdvisor } = await query.single();
 
     if (existingAdvisor) {
+      const assignedName = existingAdvisor.instructor?.users
+        ? `${existingAdvisor.instructor.users.first_name} ${existingAdvisor.instructor.users.last_name}`
+        : "An instructor";
+
       return res.status(400).json({
         success: false,
-        message: "This instructor is already an advisor for this degree and batch"
+        message: `${assignedName} is already assigned as advisor for ${for_degree} ${batch} ${branch ? `(${branch})` : '(All Branches)'}. Please remove them first.`
       });
     }
 
@@ -416,6 +436,7 @@ export const createAdvisor = async (req, res) => {
         instructor_id,
         for_degree,
         batch,
+        branch: branch || null,
         is_deleted: false
       })
       .select()

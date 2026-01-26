@@ -167,13 +167,16 @@ create table public.course_offering_instructor (
   constraint coi_instructor_fkey foreign KEY (instructor_id) references instructor (instructor_id) on delete CASCADE,
   constraint coi_offering_fkey foreign KEY (offering_id) references course_offering (offering_id) on delete CASCADE
 ) TABLESPACE pg_default;
+
 create table public.faculty_advisor (
   advisor_id serial not null,
   instructor_id integer not null,
   for_degree character varying(50) null,
   batch character varying(10) null,
   is_deleted boolean null default false,
+  branch character varying null,
   constraint faculty_advisor_pkey primary key (advisor_id),
+  constraint unique_degree_batch_branch unique (for_degree, batch, branch),
   constraint faculty_advisor_instructor_id_fkey foreign KEY (instructor_id) references instructor (instructor_id) on delete CASCADE,
   constraint faculty_advisor_degree_check check (
     (

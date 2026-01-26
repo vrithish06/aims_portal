@@ -304,7 +304,7 @@ function MyPendingWorksPage() {
       return (
         <div className="bg-white border rounded-lg p-8 text-center">
           <Check className="w-10 h-10 text-green-500 mx-auto mb-2" />
-          <p className="text-gray-600">No matching records.</p>
+          <p className="text-gray-600">No pending works.</p>
         </div>
       );
     }
@@ -401,11 +401,6 @@ function MyPendingWorksPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* HEADER */}
-        <div className="flex items-center gap-3">
-          <UserCheck className="w-7 h-7 text-blue-600" />
-          <h1 className="text-2xl font-bold">My Pending Works</h1>
-        </div>
 
 
         {/* 🔥 FILTER BAR */}
@@ -459,11 +454,10 @@ function MyPendingWorksPage() {
             <button
               onClick={() => setActiveTab('instructor')}
               className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'instructor'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
-              <BookOpen className="w-5 h-5" />
               Pending as Instructor ({filteredInstructor.length})
             </button>
 
@@ -471,11 +465,10 @@ function MyPendingWorksPage() {
               <button
                 onClick={() => setActiveTab('advisor')}
                 className={`px-4 py-3 font-semibold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'advisor'
-                    ? 'border-purple-600 text-purple-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
               >
-                <GraduationCap className="w-5 h-5" />
                 Pending as Advisor ({filteredAdvisor.length})
               </button>
             )}

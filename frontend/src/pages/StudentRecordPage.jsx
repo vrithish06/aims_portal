@@ -229,16 +229,7 @@ function StudentRecordPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-4xl font-bold mb-2 flex items-center gap-2 text-gray-900">
-          <BookOpen className="w-8 h-8 text-blue-600" />
-          Student Record
-        </h1>
-        <p className="text-lg text-gray-600">
-          Complete academic record and course history
-        </p>
-      </div>
+      
 
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
@@ -370,9 +361,8 @@ function StudentRecordPage() {
           <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
             <div className="flex items-center justify-between flex-wrap gap-4 mb-6 pb-4 border-b-2 border-blue-200">
               <div className="flex items-center gap-3">
-                <BookOpen className="w-6 h-6 text-blue-600" />
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Course Records by Session
+                  Course Records 
                 </h2>
               </div>
 
