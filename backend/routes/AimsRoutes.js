@@ -304,7 +304,7 @@ router.post('/offering/:offeringId/upload-grades', uploadGrades);
 
 // --- CURRENT SESSION DETAILS ROUTES ---
 // Get all available academic sessions
-router.get('/session/list', requireAuth, requireRole('admin'), getAllSessions);
+router.get('/session/list', requireAuth, requireRole('instructor'), getAllSessions);
 
 // Get course offerings for a specific session
 router.get('/session/:session/offerings', requireAuth, requireRole('admin'), getOfferingsBySession);

@@ -89,6 +89,7 @@ function AddOfferingPage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
 
   const [acad_session, setAcadSession] = useState("");
+  const [sessions, setSessions] = useState([]);
   const [status, setStatus] = useState("Proposed");
   const [slot, setSlot] = useState("");
   const [section, setSection] = useState("");
@@ -107,6 +108,7 @@ function AddOfferingPage() {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const searchRef = useRef(null);
   const instructorRef = useRef(null);
@@ -183,6 +185,22 @@ function AddOfferingPage() {
     return () => window.removeEventListener("mousedown", handler);
   }, []);
 
+  // Fetch sessions on mount
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const response = await axiosClient.get("/session/list");
+        if (response.data.success) {
+          const uniqueSessions = response.data.data.sort().reverse();
+          setSessions(uniqueSessions);
+        }
+      } catch (error) {
+        console.error("Failed to fetch sessions:", error);
+      }
+    };
+    fetchSessions();
+  }, []);
+
   // Fetch available instructors on mount
   useEffect(() => {
     const fetchInstructors = async () => {
@@ -231,6 +249,7 @@ function AddOfferingPage() {
   // Select course
   const handleSelectCourse = (course) => {
     setSelectedCourse(course);
+    setFormError(""); // Clear error on change
     setCourseSearchQuery("");
     setShowSearchResults(false);
     setCourseSearchResults([]);
@@ -255,6 +274,7 @@ function AddOfferingPage() {
       }
     ]);
 
+    setFormError(""); // Clear error on change
     setInstructorSearch("");
     setShowInstructorDropdown(false);
   };
@@ -271,7 +291,9 @@ function AddOfferingPage() {
     setSelectedInstructors(
       selectedInstructors.map((i) => {
         if (i.instructor_id === instructorId) {
-          return { ...i, is_coordinator: !i.is_coordinator };
+          const newStatus = !i.is_coordinator;
+          if (newStatus && formError?.includes("coordinator")) setFormError(""); // Clear error if fixing
+          return { ...i, is_coordinator: newStatus };
         } else {
           // Ensure only one coordinator
           return { ...i, is_coordinator: false };
@@ -319,13 +341,17 @@ function AddOfferingPage() {
     }
 
     if (selectedInstructors.length === 0) {
-      toast.error("Please add at least one instructor");
+      const msg = "Please add at least one instructor";
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
     const coordinators = selectedInstructors.filter((i) => i.is_coordinator);
     if (coordinators.length !== 1) {
-      toast.error("Exactly one instructor must be marked as coordinator");
+      const msg = "At least one instructor should be a coordinator";
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -351,6 +377,7 @@ function AddOfferingPage() {
 
       if (response.data.success) {
         toast.success("Course offering created successfully!");
+        setFormError("");
         // Reset form
         setSelectedCourse(null);
         setAcadSession("");
@@ -365,9 +392,16 @@ function AddOfferingPage() {
       }
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to create course offering"
-      );
+
+      const serverMessage = error.response?.data?.message;
+      const isDuplicate = error.response?.status === 500 && serverMessage?.includes("duplicate key");
+
+      const errorMessage = isDuplicate
+        ? `This course (${selectedCourse.code}) is already offered in session ${acad_session}.`
+        : (serverMessage || "Failed to create course offering");
+
+      setFormError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -472,14 +506,22 @@ function AddOfferingPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Academic Session *
               </label>
-              <input
-                type="text"
+              <select
                 value={acad_session}
-                onChange={(e) => setAcadSession(e.target.value)}
-                placeholder="e.g., 2026-I , 2026-II"
-                className="input input-bordered w-full"
+                onChange={(e) => {
+                  setAcadSession(e.target.value);
+                  if (formError) setFormError(""); // Clear error on change
+                }}
+                className="select select-bordered w-full"
                 required
-              />
+              >
+                <option value="">-- Select Session --</option>
+                {sessions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Status */}
@@ -721,6 +763,16 @@ function AddOfferingPage() {
                 + Add another target
               </button>
             </div>
+
+            {/* Error Message */}
+            {formError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium animate-shake">
+                <div className="flex items-center gap-2">
+                  <X className="w-4 h-4" />
+                  {formError}
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">

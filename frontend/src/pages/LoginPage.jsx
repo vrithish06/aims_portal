@@ -8,32 +8,51 @@ function LoginPage({ insideModal = false }) {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   const sendOTP = useAuthStore((state) => state.sendOTP);
   const verifyOTP = useAuthStore((state) => state.verifyOTP);
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
+    setEmailError("");
 
     if (!email) {
-      toast.error("Please enter your email");
+      setEmailError("Email is required");
+      return;
+    }
+
+    const trimmedEmail = email.toLowerCase().trim();
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setEmailError("Enter a valid email address");
+      return;
+    }
+
+    if (!trimmedEmail.endsWith("@iitrpr.ac.in")) {
+      setEmailError("Only @iitrpr.ac.in emails are allowed");
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await sendOTP(email);
+      const result = await sendOTP(trimmedEmail);
 
       if (result?.success) {
         toast.success("OTP sent to your email!");
         setStep("otp");
       } else {
-        toast.error(result?.message || "Failed to send OTP");
+        // Specifically handle "User not found" or domain errors from backend
+        const msg = result?.message || "Login failed";
+        setEmailError(msg);
       }
     } catch (error) {
       console.error("Send OTP failed:", error);
-      toast.error("Failed to send OTP. Please try again.");
+      const msg = error.response?.data?.message || "Failed to send OTP. Please try again.";
+      setEmailError(msg);
     } finally {
       setLoading(false);
     }
@@ -125,19 +144,28 @@ function LoginPage({ insideModal = false }) {
 
           {step === "email" ? (
             // STEP 1: EMAIL ENTRY
-            <form onSubmit={handleSendOTP}>
+            <form onSubmit={handleSendOTP} noValidate>
               <h2 className="text-2xl font-bold mb-6 text-gray-800">Enter Your Email</h2>
 
               <div className="mb-8">
                 <input
                   type="email"
                   placeholder="Enter email"
-                  className="w-full bg-transparent border-b border-gray-400 text-black text-base md:text-lg py-3 focus:outline-none focus:border-blue-600 placeholder-gray-500"
+                  className={`w-full bg-transparent border-b text-black text-base md:text-lg py-3 focus:outline-none transition-colors placeholder-gray-500 ${emailError ? "border-red-500 focus:border-red-600" : "border-gray-400 focus:border-blue-600"
+                    }`}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError("");
+                  }}
                   disabled={loading}
                   required
                 />
+                {emailError && (
+                  <p className="text-red-500 text-xs mt-2 font-medium animate-pulse">
+                    {emailError}
+                  </p>
+                )}
               </div>
 
               <button

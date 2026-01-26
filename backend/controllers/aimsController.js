@@ -2565,7 +2565,13 @@ export const getAlerts = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('alerts')
-      .select('*')
+      .select(`
+        *,
+        users:admin_id (
+          first_name,
+          last_name
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -3436,31 +3442,18 @@ export const sendOTP = async (req, res) => {
       throw otpError;
     }
 
-    // Send OTP via email
-    try {
-      await sendOTPEmail(email, otp);
-      console.log("[SEND-OTP] ✅ OTP sent successfully to", email);
+    // Send OTP via email in background to avoid blocking the response
+    sendOTPEmail(normalizedEmail, otp).catch(emailError => {
+      console.error("[SEND-OTP] Background email error:", emailError.message);
+      // We don't return error to user here as they already moved to OTP step
+    });
 
-      return res.status(200).json({
-        success: true,
-        message: "OTP sent to your email",
-        // Don't send OTP to client, only to email
-      });
-    } catch (emailError) {
-      console.error("[SEND-OTP] Error sending email:", emailError.message);
+    console.log("[SEND-OTP] Background email process started for", normalizedEmail);
 
-      // Delete the OTP record if email fails
-      await supabase
-        .from("otp_codes")
-        .delete()
-        .eq("id", otpRecord.id);
-
-      return res.status(500).json({
-        success: false,
-        message: `Failed to send OTP: ${emailError.message}`,
-        debug: process.env.NODE_ENV === 'development' ? emailError.stack : undefined
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent to your email",
+    });
   } catch (err) {
     console.error("[SEND-OTP] Unexpected FATAL error:", err);
     console.error(err.stack);

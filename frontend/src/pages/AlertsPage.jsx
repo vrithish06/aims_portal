@@ -93,7 +93,7 @@ const AlertsPage = () => {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <User className="w-4 h-4" />
-                                                <span>Academic Admin</span>
+                                                <span>{alert.users ? `${alert.users.first_name} ${alert.users.last_name} (admin)` : 'Academic Admin'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -104,11 +104,7 @@ const AlertsPage = () => {
                 )}
             </div>
 
-            <footer className="py-12 bg-white border-t border-gray-100 mt-auto">
-                <div className="max-w-4xl mx-auto px-6 text-center text-gray-400 text-sm">
-                    AIMS Portal &copy; {new Date().getFullYear()} • Official Academic Communication Channel
-                </div>
-            </footer>
+
         </div>
     );
 };

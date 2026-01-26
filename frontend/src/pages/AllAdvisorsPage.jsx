@@ -270,15 +270,7 @@ function AllAdvisorsPage() {
             <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <span className="text-lg font-medium block">No advisors found.</span>
             <span className="text-sm text-slate-400">Try adjusting your filters or search criteria.</span>
-            {!hasActiveFilters() && advisors.length === 0 && (
-              <button
-                onClick={() => navigate("/add-advisor")}
-                className="mt-6 btn bg-blue-600 hover:bg-blue-700 text-white border-none gap-2 shadow-sm"
-              >
-                <Plus size={20} />
-                Create First Advisor
-              </button>
-            )}
+
           </div>
         ) : (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
