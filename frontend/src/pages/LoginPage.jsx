@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import useAuthStore from "../store/authStore";
 import toast from "react-hot-toast";
+import bgImage from "../assets/image.png";
 
 function LoginPage({ insideModal = false }) {
   const [step, setStep] = useState("email"); // "email" or "otp"
@@ -80,10 +81,20 @@ function LoginPage({ insideModal = false }) {
       className={
         insideModal
           ? 'bg-white'
-          : 'min-h-screen flex items-center justify-center bg-white'
+          : 'min-h-screen flex items-center justify-center bg-white relative overflow-hidden'
       }
     >
-      <div className="flex flex-col md:flex-row w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl">
+      {/* Background Image - Bottom Left */}
+      {!insideModal && (
+        <img
+          src={bgImage}
+          alt="Background Decoration"
+          className="absolute bottom-0 right-0 w-[30vw] md:w-[25vw] object-contain z-0 pointer-events-none select-none opacity-90"
+        />
+      )}
+
+      {/* Login Card */}
+      <div className="relative z-10 flex flex-col md:flex-row w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl">
 
         {/* LEFT SIDE */}
         <div className="w-full md:w-1/2 flex flex-col items-center justify-center bg-white text-black px-6 py-10 md:p-16 relative">

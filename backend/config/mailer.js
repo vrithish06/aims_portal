@@ -4,8 +4,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Configure nodemailer transporter
-// Configure nodemailer transporter
 // Use explicit host and port for better reliability on cloud platforms (Render)
+console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING');
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
@@ -14,6 +15,13 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
+  // Timeouts to prevent hanging
+  connectionTimeout: 10000,
+  greetingTimeout: 5000,
+  socketTimeout: 10000,
+  // Enable debug logging for Render logs
+  debug: true,
+  logger: true
 });
 
 // Verify connection

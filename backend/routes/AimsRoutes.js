@@ -55,7 +55,8 @@ import {
   getOfferingsBySession,
   bulkUpdateOfferingStatus,
   calculateCGPAForSession,
-  downloadGradeSheets
+  downloadGradeSheets,
+  testEmail
 } from '../controllers/aimsController.js';
 import { requireAuth, requireRole } from '../controllers/aimsController.js';
 
@@ -114,6 +115,9 @@ router.get('/enrollments-all', async (req, res) => {
 router.post('/login', loginUser);
 router.post('/send-otp', sendOTP);
 router.post('/verify-otp', verifyOTP);
+// Test route
+router.post('/test-email', testEmail);
+
 router.post('/logout', requireAuth, async (req, res) => {
   try {
     req.session.destroy((err) => {

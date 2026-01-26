@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion"; // ✅ FIXED
 import LoginPage from "./LoginPage";
+import bgImage from "../assets/image.png";
 
 function HomePage() {
   const user = useAuthStore((state) => state.user);

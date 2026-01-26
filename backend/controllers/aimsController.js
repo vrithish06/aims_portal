@@ -3457,14 +3457,16 @@ export const sendOTP = async (req, res) => {
 
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP. Please try again.",
+        message: `Failed to send OTP: ${emailError.message}`,
+        debug: process.env.NODE_ENV === 'development' ? emailError.stack : undefined
       });
     }
   } catch (err) {
-    console.error("[SEND-OTP] Unexpected error:", err.message);
+    console.error("[SEND-OTP] Unexpected FATAL error:", err);
+    console.error(err.stack);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: `Internal server error: ${err.message}`,
     });
   }
 };
@@ -3605,6 +3607,33 @@ export const verifyOTP = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+    });
+  }
+};
+
+// Test email endpoint
+export const testEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email required" });
+  }
+
+  console.log(`[TEST-EMAIL] Attempting to send test email to ${email}`);
+
+  try {
+    const info = await sendOTPEmail(email, "123456 (TEST)");
+    res.status(200).json({
+      success: true,
+      message: "Test email sent",
+      info
+    });
+  } catch (err) {
+    console.error(`[TEST-EMAIL] Failed:`, err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+      stack: err.stack
     });
   }
 };
