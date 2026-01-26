@@ -8,32 +8,20 @@ dotenv.config();
 console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING');
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // STARTTLS
+  host: 'smtp.googlemail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  // Disable pooling to avoid "Pool Error"
-  pool: false,
-  connectionTimeout: 30000,
-  greetingTimeout: 20000,
-  socketTimeout: 30000,
+  connectionTimeout: 60000,
+  greetingTimeout: 30000,
+  socketTimeout: 60000,
   debug: true,
   logger: true,
   tls: {
-    rejectUnauthorized: false,
-    minVersion: "TLSv1.2"
-  }
-});
-
-// Verify connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('[MAILER] Connection failed:', error.message);
-  } else {
-    console.log('[MAILER] ✅ Server is ready to send emails');
+    rejectUnauthorized: false
   }
 });
 
