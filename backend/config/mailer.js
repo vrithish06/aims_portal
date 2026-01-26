@@ -8,20 +8,40 @@ dotenv.config();
 console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING');
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.googlemail.com',
+  host: 'smtp.gmail.com',
   port: 465,
-  secure: true,
+  secure: true, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  connectionTimeout: 60000,
-  greetingTimeout: 30000,
-  socketTimeout: 60000,
-  debug: true,
-  logger: true,
   tls: {
+    // Helps with some cloud environments (Render/Heroku)
     rejectUnauthorized: false
+  },
+  // Timeouts to prevent hanging
+  connectionTimeout: 10000,
+  greetingTimeout: 5000,
+  socketTimeout: 10000,
+  // Enable debug logging for Render logs
+  debug: true,
+  logger: true
+});
+
+// Explicit check for environment variables
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+  console.error('[MAILER] ⚠️ CRITICAL WARNING: EMAIL_USER or EMAIL_PASSWORD is missing in Environment Variables!');
+  console.error('[MAILER] OTPs will NOT be sent. Please add these in your Render Dashboard under "Environment".');
+} else {
+  console.log('[MAILER] Credentials present. User:', process.env.EMAIL_USER.replace(/(.{3})(.*)(@.*)/, '$1***$3'));
+}
+
+// Verify connection
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('[MAILER] Connection failed:', error.message);
+  } else {
+    console.log('[MAILER] ✅ Server is ready to send emails');
   }
 });
 
@@ -34,7 +54,7 @@ const transporter = nodemailer.createTransport({
 export const sendOTPEmail = async (email, otp) => {
   try {
     const mailOptions = {
-      from: `"AIMS Portal" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Your AIMS Login OTP',
       html: `
