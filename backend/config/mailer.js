@@ -34,7 +34,7 @@ const transporter = nodemailer.createTransport({
 export const sendOTPEmail = async (email, otp) => {
   try {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"AIMS Portal" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Your AIMS Login OTP',
       html: `
