@@ -12,8 +12,6 @@ import {
   GraduationCap,
   Search,
   User,
-  LayoutGrid,
-  ClipboardList,
   BookOpen,
   X,
   PieChart,
@@ -301,6 +299,7 @@ function CourseDetailsPage() {
         "Student Name": s.student_name,
         "Student Email": s.student_email,
         "Enrollment Type": s.enrol_type,
+        "Grade": s.grade || "",
       }));
 
       // Create workbook and worksheet
@@ -313,6 +312,7 @@ function CourseDetailsPage() {
         { wch: 25 },
         { wch: 30 },
         { wch: 25 },
+        { wch: 10 },
       ];
 
       // Download file
@@ -391,12 +391,20 @@ function CourseDetailsPage() {
           console.log("[UPLOAD] Validation passed, all columns present");
 
           // Process and upload grades
-          const gradesData = jsonData.map((row) => ({
-            student_name: row["Student Name"],
-            student_email: row["Student Email"],
-            enrol_type: row["Enrollment Type"],
-            grade: String(row["Grade"]).trim(),
-          }));
+          const gradesData = jsonData
+            .filter((row) => row["Grade"] !== undefined && row["Grade"] !== null && String(row["Grade"]).trim() !== "")
+            .map((row) => ({
+              student_name: row["Student Name"],
+              student_email: row["Student Email"],
+              enrol_type: row["Enrollment Type"],
+              grade: String(row["Grade"]).trim(),
+            }));
+
+          if (gradesData.length === 0) {
+            toast.error("No valid grades found in the file to update");
+            setUploadLoading(false);
+            return;
+          }
 
           console.log("[UPLOAD] Sending grades data to backend:", {
             offeringId,
@@ -568,8 +576,8 @@ function CourseDetailsPage() {
         {/* Tabs */}
         <div className="max-w-[1600px] mx-auto px-6 flex border-b border-slate-100">
           {[
-            { id: "main", label: "Main", icon: LayoutGrid },
-            { id: "enrollments", label: "Enrollments", icon: ClipboardList },
+            { id: "main", label: "Main" },
+            { id: "enrollments", label: "Enrollments" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -579,7 +587,6 @@ function CourseDetailsPage() {
                 : "text-slate-500 hover:text-slate-700 hover:bg-slate-50/60"
                 }`}
             >
-              <tab.icon className="w-4.5 h-4.5" />
               {tab.label}
             </button>
           ))}
@@ -811,7 +818,7 @@ function CourseDetailsPage() {
                 <div className="flex gap-2 ml-auto">
                   <button
                     onClick={handleDownloadExcel}
-                    className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                    className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                     title="Download enrolled students as Excel"
                   >
                     <Download className="w-4 h-4" />
@@ -821,7 +828,7 @@ function CourseDetailsPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadLoading}
-                    className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                    className="btn btn-outline btn-sm gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                     title="Upload grades from Excel"
                   >
                     {uploadLoading ? (

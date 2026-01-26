@@ -82,10 +82,21 @@ function AddAdvisorPage() {
 
   const [formData, setFormData] = useState({
     forDegree: "BTech",
+    branch: "All",
     batch: new Date().getFullYear(),
   });
 
   const degrees = ["BTech", "MTech", "PhD"];
+
+  const branches = [
+    { value: "CSE", label: "Computer Science Engineering" },
+    { value: "EE", label: "Electrical Engineering" },
+    { value: "MNC", label: "Mathematics and Computing" },
+    { value: "MECH", label: "Mechanical Engineering" },
+    { value: "CHE", label: "Chemical Engineering" },
+    { value: "CIVIL", label: "Civil Engineering" },
+    { value: "AI", label: "Artificial Intelligence" }
+  ];
 
   // Check authorization
   useEffect(() => {
@@ -119,14 +130,19 @@ function AddAdvisorPage() {
 
   const handleAddAdvisor = async (e) => {
     e.preventDefault();
+    setError(""); // Clear previous errors
 
     if (!selectedInstructor) {
-      toast.error("Please select an instructor");
+      const msg = "Please select an instructor";
+      toast.error(msg);
+      setError(msg);
       return;
     }
 
-    if (!formData.forDegree || !formData.batch) {
-      toast.error("Please fill all fields");
+    if (!formData.forDegree || !formData.batch || !formData.branch) {
+      const msg = "Please fill all fields";
+      toast.error(msg);
+      setError(msg);
       return;
     }
 
@@ -135,6 +151,7 @@ function AddAdvisorPage() {
       const payload = {
         instructor_id: selectedInstructor.instructor_id,
         for_degree: formData.forDegree,
+        branch: formData.branch === "All" ? null : formData.branch,
         batch: formData.batch,
       };
       console.log("[AddAdvisor] Sending payload:", payload);
@@ -146,6 +163,7 @@ function AddAdvisorPage() {
         setSelectedInstructor(null);
         setFormData({
           forDegree: "BTech",
+          branch: "All",
           batch: new Date().getFullYear(),
         });
         // Navigate to all advisors page after 1 second
@@ -155,12 +173,16 @@ function AddAdvisorPage() {
           });
         }, 1000);
       } else {
-        toast.error(res.data.message || "Failed to add advisor");
+        const errorMsg = res.data.message || "Failed to add advisor";
+        toast.error(errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
       console.error("Add advisor error:", err);
       console.error("Error response:", err.response?.data);
-      toast.error(err.response?.data?.message || "Something went wrong");
+      const errorMsg = err.response?.data?.message || "Something went wrong";
+      toast.error(errorMsg);
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -326,7 +348,7 @@ function AddAdvisorPage() {
                             forDegree: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                       >
                         {degrees.map((degree) => (
                           <option key={degree} value={degree}>
@@ -334,6 +356,36 @@ function AddAdvisorPage() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* Branch */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Branch
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formData.branch}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              branch: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none"
+                        >
+                          <option value="All">All Branches</option>
+                          {branches.map((b) => (
+                            <option key={b.value} value={b.value}>
+                              {b.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Select specific branch or "All" for general advisor
+                      </p>
                     </div>
 
                     {/* Batch */}
@@ -350,7 +402,7 @@ function AddAdvisorPage() {
                             batch: parseInt(e.target.value),
                           })
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                       />
                     </div>
 
@@ -358,10 +410,16 @@ function AddAdvisorPage() {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                     >
-                      <Plus className="w-5 h-5" />
-                      {submitting ? "Adding..." : "Add as Advisor"}
+                      {submitting ? (
+                        <span className="loading loading-spinner loading-sm"></span>
+                      ) : (
+                        <>
+                          <Plus className="w-5 h-5" />
+                          Add as Advisor
+                        </>
+                      )}
                     </button>
                   </form>
                 ) : (

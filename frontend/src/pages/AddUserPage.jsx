@@ -341,7 +341,7 @@ function AddUserPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-8">
@@ -355,8 +355,8 @@ function AddUserPage() {
           <div className="flex border-b border-gray-200 mb-6">
             <button
               className={`py-2 px-4 font-medium transition-colors ${activeTab === 'single'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
                 }`}
               onClick={() => { setActiveTab('single'); setError(''); setSuccess(''); }}
             >
@@ -364,8 +364,8 @@ function AddUserPage() {
             </button>
             <button
               className={`py-2 px-4 font-medium transition-colors ${activeTab === 'bulk'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
                 }`}
               onClick={() => { setActiveTab('bulk'); setError(''); setSuccess(''); }}
             >
@@ -695,7 +695,7 @@ function AddUserPage() {
                               <td>{row.email}</td>
                               <td>
                                 <span className={`badge badge-xs ${row.role === 'admin' ? 'badge-error' :
-                                    row.role === 'instructor' ? 'badge-warning' : 'badge-info'
+                                  row.role === 'instructor' ? 'badge-warning' : 'badge-info'
                                   }`}>
                                   {row.role}
                                 </span>
