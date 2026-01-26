@@ -8,19 +8,17 @@ dotenv.config();
 console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Built-in support for Gmail (automatically sets correct ports/security)
+  host: 'smtp.gmail.com',
+  port: 587, // STARTTLS port (often less restricted than 465)
+  secure: false, // must be false for port 587
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  // Drastically increase timeouts for slow cloud connections
+  // Keep high timeouts
   connectionTimeout: 60000,
   greetingTimeout: 30000,
   socketTimeout: 60000,
-  // Keep TLS permissive
-  tls: {
-    rejectUnauthorized: false
-  },
   debug: true,
   logger: true
 });
