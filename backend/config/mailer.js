@@ -9,16 +9,21 @@ console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // true for 465, false for other ports
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  pool: true,    // Use pooled connections
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
+  tls: {
+    // Do not fail on invalid certs
+    rejectUnauthorized: false
+  },
   // Timeouts to prevent hanging
-  connectionTimeout: 10000,
-  greetingTimeout: 5000,
-  socketTimeout: 10000,
+  connectionTimeout: 20000,
+  greetingTimeout: 10000,
+  socketTimeout: 20000,
   // Enable debug logging for Render logs
   debug: true,
   logger: true
