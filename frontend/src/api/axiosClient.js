@@ -35,7 +35,10 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config;
     console.log(`[AXIOS] ❌ ${originalRequest.method.toUpperCase()} ${originalRequest.url} - Status: ${error.response?.status}`);
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const authEndpoints = ["/login", "/verify-otp", "/send-otp"];
+    const isAuthEndpoint = authEndpoints.some(ep => originalRequest.url.endsWith(ep));
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       console.log(`[AXIOS] 401 Unauthorized - Attempting re-authentication`);
       
       if (isRefreshingAuth) {

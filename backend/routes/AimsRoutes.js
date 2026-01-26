@@ -20,6 +20,8 @@ import {
   // createOffering,
   getAllowedEnrolTypes,
   loginUser,
+  sendOTP,
+  verifyOTP,
   getEnrolledCourses,
   getStudentCredits,
   getStudentCGPA,
@@ -110,6 +112,8 @@ router.get('/enrollments-all', async (req, res) => {
 
 // Auth endpoints
 router.post('/login', loginUser);
+router.post('/send-otp', sendOTP);
+router.post('/verify-otp', verifyOTP);
 router.post('/logout', requireAuth, async (req, res) => {
   try {
     req.session.destroy((err) => {

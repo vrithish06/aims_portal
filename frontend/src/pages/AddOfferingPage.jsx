@@ -5,6 +5,79 @@ import useAuthStore from "../store/authStore";
 import toast from "react-hot-toast";
 import { Search, ArrowLeft, Plus, X, Check } from "lucide-react";
 
+// ... (MultiSelectDropdown moving to top)
+/* ================= MULTI-SELECT DROPDOWN ================= */
+function MultiSelectDropdown({ label, options, selected = [], onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, []);
+
+  const toggleOption = (value) => {
+    let newSelected;
+    if (selected.includes(value)) {
+      newSelected = selected.filter(v => v !== value);
+    } else {
+      newSelected = [...selected, value];
+    }
+    onChange(newSelected);
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="input input-bordered w-full h-auto min-h-[3rem] py-2 text-left flex flex-wrap gap-1 items-center bg-white"
+      >
+        {selected.length === 0 ? (
+          <span className="text-gray-400">{placeholder}</span>
+        ) : (
+          selected.map(val => (
+            <span key={val} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium flex items-center gap-1">
+              {val}
+              <span
+                className="cursor-pointer hover:text-blue-900 font-bold"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleOption(val);
+                }}
+              >
+                &times;
+              </span>
+            </span>
+          ))
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => toggleOption(opt.value)}
+              className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+            >
+              <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.includes(opt.value) ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                }`}>
+                {selected.includes(opt.value) && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span className="text-sm text-gray-700">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddOfferingPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -28,8 +101,9 @@ function AddOfferingPage() {
 
   // Targets
   const [targets, setTargets] = useState([
-    { batch: "", degree: "", branch: "", offering_type: [] }
+    { batch: "", degree: [], branch: [], offering_type: [] }
   ]);
+
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +115,22 @@ function AddOfferingPage() {
     "Core",
     "Program Elective",
     "Open Elective"
+  ];
+
+  const degrees = [
+    { value: "BTech", label: "BTech" },
+    { value: "MTech", label: "MTech" },
+    { value: "PhD", label: "PhD" }
+  ];
+
+  const branches = [
+    { value: "CSE", label: "CSE" },
+    { value: "EE", label: "EE" },
+    { value: "MNC", label: "MNC" },
+    { value: "MECH", label: "MECH" },
+    { value: "CHE", label: "CHE" },
+    { value: "CIVIL", label: "CIVIL" },
+    { value: "AI", label: "AI" }
   ];
 
   const handleTargetChange = (index, field, value) => {
@@ -576,42 +666,38 @@ function AddOfferingPage() {
                         className="input input-bordered"
                       />
 
-                      <input
-                        type="text"
-                        placeholder="Degree (BTech / MTech)"
-                        value={target.degree}
-                        onChange={(e) =>
-                          handleTargetChange(idx, "degree", e.target.value)
-                        }
-                        className="input input-bordered"
+                      <MultiSelectDropdown
+                        placeholder="Select Degree(s)"
+                        options={degrees}
+                        selected={target.degree}
+                        onChange={(val) => handleTargetChange(idx, "degree", val)}
                       />
 
-                      <input
-                        type="text"
-                        placeholder="Branch (CSE / EE)"
-                        value={target.branch}
-                        onChange={(e) =>
-                          handleTargetChange(idx, "branch", e.target.value)
-                        }
-                        className="input input-bordered"
+                      <MultiSelectDropdown
+                        placeholder="Select Branch(es)"
+                        options={branches}
+                        selected={target.branch}
+                        onChange={(val) => handleTargetChange(idx, "branch", val)}
                       />
                     </div>
 
                     {/* Offering Type */}
-                    <div className="flex gap-2 flex-wrap">
-                      {offeringTypeOptions.map(type => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => toggleOfferingType(idx, type)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium border ${target.offering_type.includes(type)
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-gray-700 border-gray-300"
-                            }`}
-                        >
-                          {type}
-                        </button>
-                      ))}
+                    < div className="flex gap-2 flex-wrap" >
+                      {
+                        offeringTypeOptions.map(type => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => toggleOfferingType(idx, type)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border ${target.offering_type.includes(type)
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-gray-700 border-gray-300"
+                              }`}
+                          >
+                            {type}
+                          </button>
+                        ))
+                      }
                     </div>
 
                     {targets.length > 1 && (
@@ -661,9 +747,9 @@ function AddOfferingPage() {
               </button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 }
 

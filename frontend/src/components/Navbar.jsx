@@ -97,11 +97,13 @@ function Navbar() {
                         My Pending Works
                       </NavLink>
                     </li>
-                    <li>
-                      <NavLink to="/myadvisees" className={navClass}>
-                        My Advisees
-                      </NavLink>
-                    </li>
+                    {user.is_advisor && (
+                      <li>
+                        <NavLink to="/myadvisees" className={navClass}>
+                          My Advisees
+                        </NavLink>
+                      </li>
+                    )}
                   </ul>
                 </div>
 
@@ -381,13 +383,15 @@ function Navbar() {
                 My Pending Works
               </Link>
 
-              <Link
-                to="/myadvisees"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
-              >
-                My Advisees
-              </Link>
+              {user.is_advisor && (
+                <Link
+                  to="/myadvisees"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-gray-700 hover:text-black hover:bg-gray-100 font-medium px-4 py-2 rounded transition-colors"
+                >
+                  My Advisees
+                </Link>
+              )}
 
               <Link
                 to="/course-offerings"

@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Megaphone,
   Bell,
+  Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion"; // ✅ FIXED
 import LoginPage from "./LoginPage";
@@ -96,6 +97,16 @@ function HomePage() {
         desc: "Organize and update your courses",
         icon: <LayoutDashboard className="w-7 h-7 text-indigo-600" />,
         onClick: () => navigate("/my-offerings"),
+      });
+    }
+
+    if (user?.role === "instructor" && user?.is_advisor) {
+      actions.push({
+        title: "My Advisees",
+        desc: "Manage your assigned students",
+        icon: <Users className="w-7 h-7 text-green-600" />,
+        onClick: () => navigate("/faculty-advisees"),
+        color: "bg-green-50 hover:bg-green-100",
       });
     }
 

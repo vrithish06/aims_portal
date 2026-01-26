@@ -378,3 +378,22 @@ execute FUNCTION sync_student_email ();
 create trigger trigger_update_users_timestamp BEFORE
 update on users for EACH row
 execute FUNCTION update_timestamp ();
+
+create table public.otp_codes (
+  id serial not null,
+  email character varying(255) not null,
+  otp_code character varying(6) not null,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  expires_at timestamp without time zone not null,
+  is_used boolean null default false,
+  used_at timestamp without time zone null,
+  created_ip character varying(45) null,
+  constraint otp_codes_pkey primary key (id),
+  constraint otp_codes_email_fkey foreign KEY (email) references users (email) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_otp_codes_email on public.otp_codes using btree (email) TABLESPACE pg_default;
+
+create index IF not exists idx_otp_codes_valid on public.otp_codes using btree (email, is_used, expires_at) TABLESPACE pg_default;
+
+create index IF not exists idx_otp_codes_expired on public.otp_codes using btree (expires_at, is_used) TABLESPACE pg_default;
