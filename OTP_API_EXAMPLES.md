@@ -231,7 +231,7 @@ const handleLogin = async (email, otp) => {
 ### Using Zustand Store (Recommended)
 
 ```javascript
-import useAuthStore from './store/authStore';
+import useAuthStore from './store/';
 
 const MyComponent = () => {
   const { sendOTP, verifyOTP, user } = useAuthStore();

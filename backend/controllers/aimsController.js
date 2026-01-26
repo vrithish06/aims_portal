@@ -1,5 +1,4 @@
 import supabase from "../config/db.js";
-import bcrypt from "bcrypt";
 import { sendOTPEmail } from "../config/mailer.js";
 import { generateOTP, getOTPExpiryTime, isOTPValid } from "../utils/otpUtils.js";
 
