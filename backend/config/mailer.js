@@ -8,25 +8,21 @@ dotenv.config();
 console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING');
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  pool: true,    // Use pooled connections
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  tls: {
-    // Do not fail on invalid certs
-    rejectUnauthorized: false
-  },
-  // Timeouts to prevent hanging
-  connectionTimeout: 20000,
-  greetingTimeout: 10000,
-  socketTimeout: 20000,
+  // Higher timeouts for cloud stability
+  connectionTimeout: 40000,
+  greetingTimeout: 30000,
+  socketTimeout: 40000,
   // Enable debug logging for Render logs
   debug: true,
-  logger: true
+  logger: true,
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 // Verify connection
