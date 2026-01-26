@@ -3463,11 +3463,14 @@ export const sendOTP = async (req, res) => {
       throw otpError;
     }
 
-    // Send OTP via email in background to avoid blocking the response
-    sendOTPEmail(normalizedEmail, otp).catch(emailError => {
-      console.error("[SEND-OTP] Background email error:", emailError.message);
-      // We don't return error to user here as they already moved to OTP step
-    });
+    // Send OTP via email - Awaiting for better debugging
+    try {
+      await sendOTPEmail(normalizedEmail, otp);
+      console.log("[SEND-OTP] ✅ Email sent successfully to", normalizedEmail);
+    } catch (emailError) {
+      console.error("[SEND-OTP] ❌ Email sending failed:", emailError.message);
+      // Still return 200 because OTP is in DB, but log the error clearly
+    }
 
     console.log("[SEND-OTP] Background email process started for", normalizedEmail);
 
