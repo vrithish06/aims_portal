@@ -9,22 +9,16 @@ console.log('[MAILER] Initializing with user:', process.env.EMAIL_USER ? process
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Use SSL
+  port: 587, // STARTTLS port (often less restricted than 465)
+  secure: false, // must be false for port 587
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  pool: true, // Use connection pooling
-  maxConnections: 1, // Limit distinct connections to avoid rate limits
-  rateLimit: 5, // Limit messages per second
-  // High timeouts
+  // Keep high timeouts
   connectionTimeout: 60000,
   greetingTimeout: 30000,
   socketTimeout: 60000,
-  tls: {
-    rejectUnauthorized: false
-  },
   debug: true,
   logger: true
 });

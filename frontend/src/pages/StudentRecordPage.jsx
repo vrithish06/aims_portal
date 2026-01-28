@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import axiosClient from "../api/axiosClient";
-import { BookOpen, User } from "lucide-react";
+import { BookOpen, User, FileText, FileSpreadsheet } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 function StudentRecordPage() {
   const [studentInfo, setStudentInfo] = useState(null);
@@ -224,12 +227,155 @@ function StudentRecordPage() {
     );
   }
 
+  // ✅ Function to generate and download PDF
+  const handleDownloadPDF = () => {
+    try {
+      const doc = new jsPDF();
+
+      // Add Logo or Title
+      doc.setFontSize(22);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Student Academic Transcript", 14, 20);
+
+      // Student Information Section
+      doc.setFontSize(12);
+      doc.setTextColor(60, 60, 60);
+
+      // Left column
+      doc.text(`Name: ${studentInfo?.users?.first_name} ${studentInfo?.users?.last_name}`, 14, 35);
+      doc.text(`Roll No: ${studentInfo?.users?.email?.split("@")[0]}`, 14, 42);
+      doc.text(`Degree: ${studentInfo?.degree || "N/A"}`, 14, 49);
+
+      // Right column
+      doc.text(`Branch: ${studentInfo?.branch || "N/A"}`, 120, 35);
+      doc.text(`CGPA: ${cgpaDisplay}`, 120, 42);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 120, 49);
+
+      // Draw a line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, 55, 196, 55);
+
+      let finalY = 60;
+
+      const sessionsToPrint = [...filteredSessionGroups].reverse();
+
+      sessionsToPrint.forEach((sessionGroup) => {
+        // Check if we need a new page
+        if (finalY > 250) {
+          doc.addPage();
+          finalY = 20;
+        }
+
+        // Session Header
+        doc.setFontSize(14);
+        doc.setTextColor(0, 51, 102);
+        doc.text(`Session: ${sessionGroup.session}`, 14, finalY + 10);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`SGPA: ${Number(sessionGroup.sgpa).toFixed(2)} | Credits: ${sessionGroup.totalEarnedCredits}`, 14, finalY + 16);
+
+        // Table Data
+        const tableData = sessionGroup.credits.map((c, i) => [
+          i + 1,
+          c.enrollment?.course_offering?.course?.code || "-",
+          c.enrollment?.course_offering?.course?.title || "-",
+          c.cred_registered || "-",
+          c.grade || "-"
+        ]);
+
+        autoTable(doc, {
+          startY: finalY + 20,
+          head: [['#', 'Code', 'Course Title', 'Credits', 'Grade']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [66, 133, 244], textColor: 255 },
+          styles: { fontSize: 10, cellPadding: 3 },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 'auto' },
+            3: { cellWidth: 20 },
+            4: { cellWidth: 20, fontStyle: 'bold' }
+          },
+          margin: { top: 10 },
+        });
+
+        finalY = doc.lastAutoTable.finalY + 10;
+      });
+
+      // Summary Footer
+      if (finalY > 200) {
+        doc.addPage();
+        finalY = 20;
+      }
+
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, finalY + 5, 196, finalY + 5);
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      doc.text("This is a computer-generated transcript.", 14, finalY + 15);
+
+      doc.save(`Transcript_${studentInfo?.users?.email?.split("@")[0] || "Student"}.pdf`);
+    } catch (error) {
+      console.error("PDF Download Error:", error);
+      alert(`Failed to generate PDF: ${error.message}`);
+    }
+  };
+
+  // ✅ Function to download Excel
+  const handleDownloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const allData = [];
+
+    // Header
+    allData.push(["ACADEMIC TRANSCRIPT"]);
+    allData.push([`Name`, `${studentInfo?.users?.first_name} ${studentInfo?.users?.last_name}`]);
+    allData.push([`Roll No`, `${studentInfo?.users?.email?.split("@")[0]}`]);
+    allData.push([`Program`, `${studentInfo?.degree} - ${studentInfo?.branch}`]);
+    allData.push([`Current CGPA`, `${cgpaDisplay}`]);
+    allData.push([]); // Spacer
+
+    const sessionsToPrint = [...filteredSessionGroups].reverse();
+
+    sessionsToPrint.forEach((group) => {
+      allData.push([`Session: ${group.session}`, `SGPA: ${Number(group.sgpa).toFixed(2)}`, `Earned Credits: ${group.totalEarnedCredits}`]);
+      allData.push(['#', 'Course Code', 'Course Title', 'Credits', 'Grade']);
+
+      group.credits.forEach((c, i) => {
+        allData.push([
+          i + 1,
+          c.enrollment?.course_offering?.course?.code || "N/A",
+          c.enrollment?.course_offering?.course?.title || "N/A",
+          c.cred_registered || "N/A",
+          c.grade || "-"
+        ]);
+      });
+      allData.push([]); // Spacer between sessions
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+
+    // Basic column widths
+    const wscols = [
+      { wch: 5 },  // #
+      { wch: 15 }, // Code
+      { wch: 40 }, // Title
+      { wch: 10 }, // Credits
+      { wch: 10 }  // Grade
+    ];
+    ws['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(wb, ws, "Transcript");
+    XLSX.writeFile(wb, `Transcript_${studentInfo?.users?.email?.split("@")[0] || "Student"}.xlsx`);
+  };
+
   const cgpaValue = Number(studentInfo?.cgpa);
   const cgpaDisplay = Number.isFinite(cgpaValue) ? cgpaValue.toFixed(2) : "N/A";
 
   return (
     <div className="min-h-screen bg-gray-50">
-      
+
 
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
@@ -362,23 +508,45 @@ function StudentRecordPage() {
             <div className="flex items-center justify-between flex-wrap gap-4 mb-6 pb-4 border-b-2 border-blue-200">
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Course Records 
+                  Course Records
                 </h2>
               </div>
 
-              {/* ✅ NEW: Session Filter Dropdown */}
-              <select
-                className="select select-bordered w-full sm:w-64"
-                value={selectedSession}
-                onChange={(e) => setSelectedSession(e.target.value)}
-              >
-                <option value="ALL">All Sessions</option>
-                {availableSessions.map((session) => (
-                  <option key={session} value={session}>
-                    {session}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {/* ✅ Download Buttons */}
+                <div className="flex items-center gap-2 mr-2">
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="btn btn-sm btn-outline btn-error gap-2 text-red-600 hover:text-white"
+                    title="Download Transcript as PDF"
+                  >
+                    <FileText size={16} />
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleDownloadExcel}
+                    className="btn btn-sm btn-outline btn-success gap-2 text-green-600 hover:text-white"
+                    title="Download Transcript as Excel"
+                  >
+                    <FileSpreadsheet size={16} />
+                    XLSX
+                  </button>
+                </div>
+
+                {/* ✅ NEW: Session Filter Dropdown */}
+                <select
+                  className="select select-bordered select-sm w-full sm:w-48"
+                  value={selectedSession}
+                  onChange={(e) => setSelectedSession(e.target.value)}
+                >
+                  <option value="ALL">All Sessions</option>
+                  {availableSessions.map((session) => (
+                    <option key={session} value={session}>
+                      {session}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {studentCredits.length === 0 ? (
