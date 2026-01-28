@@ -1,6 +1,6 @@
 services:
   # Frontend Static Site
-  - type: static_site
+  - type: static
     name: aims-portal-frontend
     plan: free
     buildCommand: cd frontend && npm install && npm run build
