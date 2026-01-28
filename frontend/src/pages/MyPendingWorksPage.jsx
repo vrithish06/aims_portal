@@ -228,6 +228,7 @@ function MyPendingWorksPage() {
   const handleBulkApprove = async (list, section) => {
     if (list.length === 0 || actionUpdating) return;
 
+    if (!window.confirm(`Are you sure you want to approve ${list.length} filtered request(s)?`)) return;
 
     try {
       setActionUpdating("bulk");
@@ -258,6 +259,8 @@ function MyPendingWorksPage() {
   // ✅ BULK REJECT BASED ON FILTERED DATA
   const handleBulkReject = async (list, section) => {
     if (list.length === 0 || actionUpdating) return;
+
+    if (!window.confirm(`Are you sure you want to reject ${list.length} filtered request(s)?`)) return;
 
     try {
       setActionUpdating("bulk");

@@ -124,6 +124,8 @@ function MyOfferingsPage() {
   const handleOfferingStatusChange = async (offeringId, newStatus) => {
     if (statusUpdating) return;
 
+    if (!window.confirm(`Are you sure you want to change the status to ${newStatus}?`)) return;
+
     try {
       setStatusUpdating(offeringId);
       const response = await axiosClient.put(`/offering/${offeringId}/status`, {

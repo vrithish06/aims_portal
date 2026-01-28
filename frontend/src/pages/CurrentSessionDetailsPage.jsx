@@ -94,6 +94,10 @@ export default function CurrentSessionDetailsPage() {
       return;
     }
 
+    if (!window.confirm(`Are you sure you want to update the status of ${selectedOfferings.size} offering(s) to ${newStatus}?`)) {
+      return;
+    }
+
     try {
       setActionLoading(true);
       setErrorMessage("");
@@ -119,6 +123,10 @@ export default function CurrentSessionDetailsPage() {
   const handleCalculateCGPA = async () => {
     if (!selectedSession) {
       setErrorMessage("Please select a session");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to calculate CGPA for session ${selectedSession}? This may take a while.`)) {
       return;
     }
 
