@@ -97,6 +97,7 @@ function CourseOfferingsPage() {
   const [slotFilter, setSlotFilter] = useState(new Set());
   const [sessionFilter, setSessionFilter] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState(new Set());
+  const [creditLimitWarning, setCreditLimitWarning] = useState({ show: false, message: '' });
 
   const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
@@ -266,6 +267,11 @@ function CourseOfferingsPage() {
     } catch (error) {
       if (error.response?.status === 409) {
         toast.error('You are already enrolled in this course');
+      } else if (error.response?.data?.message?.toLowerCase().includes('credit limit')) {
+        setCreditLimitWarning({
+          show: true,
+          message: 'Credit limit for this session reached. Please drop in any other course to continue.'
+        });
       } else {
         toast.error(error.response?.data?.message || 'Failed to enroll');
       }
@@ -705,6 +711,33 @@ function CourseOfferingsPage() {
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
               >
                 Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Credit Limit Warning Modal */}
+      {creditLimitWarning.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Credit Limit Reached</h3>
+                <p className="text-sm text-gray-600 mt-2">
+                  {creditLimitWarning.message}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setCreditLimitWarning({ show: false, message: '' })}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+              >
+                OK
               </button>
             </div>
           </div>
