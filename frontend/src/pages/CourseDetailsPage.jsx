@@ -406,6 +406,12 @@ function CourseDetailsPage() {
             return;
           }
 
+          if (!window.confirm(`Found ${gradesData.length} student grade(s) to upload. Proceed?`)) {
+            setUploadLoading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+          }
+
           console.log("[UPLOAD] Sending grades data to backend:", {
             offeringId,
             count: gradesData.length,

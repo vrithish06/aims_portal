@@ -9,6 +9,7 @@ function LoginPage({ insideModal = false }) {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [otpError, setOtpError] = useState("");
 
   const sendOTP = useAuthStore((state) => state.sendOTP);
   const verifyOTP = useAuthStore((state) => state.verifyOTP);
@@ -60,14 +61,15 @@ function LoginPage({ insideModal = false }) {
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
+    setOtpError("");
 
     if (!otp) {
-      toast.error("Please enter the OTP");
+      setOtpError("Please enter the OTP");
       return;
     }
 
     if (otp.length !== 6) {
-      toast.error("OTP must be 6 digits");
+      setOtpError("OTP must be 6 digits");
       return;
     }
 
@@ -80,11 +82,12 @@ function LoginPage({ insideModal = false }) {
         toast.success("Login successful!");
         // Navigation happens automatically via session check in App.jsx
       } else {
-        toast.error(result?.message || "Invalid OTP");
+        setOtpError("Incorrect OTP entered");
+        toast.error("Incorrect OTP entered");
       }
     } catch (error) {
       console.error("OTP verification failed:", error);
-      toast.error("OTP verification failed. Please try again.");
+      setOtpError("OTP verification failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -93,6 +96,7 @@ function LoginPage({ insideModal = false }) {
   const handleBackToEmail = () => {
     setStep("email");
     setOtp("");
+    setOtpError("");
   };
 
   return (
@@ -188,18 +192,27 @@ function LoginPage({ insideModal = false }) {
                 <input
                   type="text"
                   placeholder="000000"
-                  className="w-full bg-transparent border-b border-gray-300 text-black text-base md:text-lg py-3 focus:outline-none focus:border-black placeholder-gray-400 text-center tracking-[0.5em] font-medium"
+                  className={`w-full bg-transparent border-b text-black text-base md:text-lg py-3 focus:outline-none placeholder-gray-400 text-center tracking-[0.5em] font-medium transition-colors ${otpError
+                    ? "border-red-500 focus:border-red-600"
+                    : "border-gray-300 focus:border-black"
+                    }`}
                   value={otp}
                   onChange={(e) => {
                     // Only allow digits
                     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
                     setOtp(value);
+                    if (otpError) setOtpError("");
                   }}
                   disabled={loading}
                   maxLength="6"
                   inputMode="numeric"
                   required
                 />
+                {otpError && (
+                  <p className="text-red-500 text-xs mt-2 font-medium animate-pulse text-center">
+                    {otpError}
+                  </p>
+                )}
               </div>
 
               <button
